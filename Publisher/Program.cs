@@ -6,7 +6,7 @@ namespace Publisher
 {
     class Program
     {
-        private static readonly string exchangeQueue = "publications";
+        private static readonly string exchangeAgent = "publications";
         private static void SendToQueue(IModel channel, string exchangeQueue, string message)
         {
             var byteMessage = Encoding.UTF8.GetBytes(message);
@@ -19,17 +19,17 @@ namespace Publisher
             var factory = new ConnectionFactory() { HostName = "localhost" };
             Console.WriteLine("Enter a generator identifier:");
             var identifier = Console.ReadLine();
-            var generator = new Generator(5000,identifier);
+            var generator = new Generator(10,identifier);
             using (var connection = factory.CreateConnection())
             {
                 using (var channel = connection.CreateModel())
                 {
-                    channel.ExchangeDeclare(exchange:exchangeQueue, type: "direct");
+                    channel.ExchangeDeclare(exchange:exchangeAgent, type: "direct");
 
                     string pub = generator.Generate();
                     while (pub!="")
                     {
-                        SendToQueue(channel,exchangeQueue,pub);
+                        SendToQueue(channel,exchangeAgent,pub);
                         pub = generator.Generate();
                     }
                 }

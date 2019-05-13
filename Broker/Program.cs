@@ -7,7 +7,7 @@ namespace Broker
 {
     class Program
     {
-        private static readonly string exchangeQueue = "publications";
+        private static readonly string exchangeAgent = "publications";
 
         private static string ReceiveFromQueue(IModel channel, string queueName)
         {
@@ -36,11 +36,11 @@ namespace Broker
             using (var connection = factory.CreateConnection())
             using (var channel = connection.CreateModel())
             {
-                channel.ExchangeDeclare(exchange: exchangeQueue,
+                channel.ExchangeDeclare(exchange: exchangeAgent,
                     type: "direct");
 
                 var queueName = channel.QueueDeclare().QueueName;
-                channel.QueueBind(queueName,exchangeQueue,routingKey:"");
+                channel.QueueBind(queueName,exchangeAgent,routingKey:"");
 
                 Console.WriteLine(" [*] Waiting for messages.");
 
