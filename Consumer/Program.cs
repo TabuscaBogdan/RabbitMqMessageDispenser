@@ -10,7 +10,7 @@ namespace Consumer
 {
     class Program
     {
-        private static string exchangeAgent = "";
+        private static string exchangeAgent = "B1";
 
         private static IModel OpenChannelOnBroker(IConnection connection,ref string queueName)
         {
@@ -60,10 +60,15 @@ namespace Consumer
                 using (var channel = OpenChannelOnBroker(connection, ref queueName))
                 {
                     var topics=new List<string>();
+                    topics.Add("");
                     //TODO add topics
                     BindTopicsToQueue(channel,queueName,topics);
 
-                    var message = ReceiveFromQueue(channel, queueName);
+                    Console.WriteLine("Awaiting Messages...");
+
+                    ReceiveFromQueue(channel, queueName);
+
+                    Console.ReadLine();
                 }
             }
         }

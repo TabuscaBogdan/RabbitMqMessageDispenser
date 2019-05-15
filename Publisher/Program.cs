@@ -7,10 +7,10 @@ namespace Publisher
     class Program
     {
         private static readonly string exchangeAgent = "publications";
-        private static void SendToQueue(IModel channel, string exchangeQueue, string message)
+        private static void SendToQueue(IModel channel, string message)
         {
             var byteMessage = Encoding.UTF8.GetBytes(message);
-            channel.BasicPublish(exchange: exchangeQueue, routingKey: "", basicProperties: null, body: byteMessage);
+            channel.BasicPublish(exchange: exchangeAgent, routingKey: "", basicProperties: null, body: byteMessage);
             Console.WriteLine($"Sent {message} on the queue.");
         }
 
@@ -29,7 +29,7 @@ namespace Publisher
                     string pub = generator.Generate();
                     while (pub!="")
                     {
-                        SendToQueue(channel,exchangeAgent,pub);
+                        SendToQueue(channel,pub);
                         pub = generator.Generate();
                     }
                 }
