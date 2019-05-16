@@ -21,6 +21,7 @@ namespace Publisher
         {
             if (numberOfSubscriptions > 0)
             {
+                numberOfSubscriptions--;
                 return $"{identifier}: {rng.Next()}";
             }
             return "";
