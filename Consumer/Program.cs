@@ -5,23 +5,29 @@ using System.Text;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using RabbitMQ.Client.Exceptions;
+using System.Threading;
 
 namespace Consumer
 {
     class Program
     {
-        private static string exchangeAgent = "B1";
+        private static string exchangeAgent = "B";
+        private static string consumerID = "";
+        private static string hostName = "localhost";
 
-        private static IModel OpenChannelOnBroker(IConnection connection,ref string queueName)
+        public static IModel OpenChannelOnBroker(IConnection connection,ref string queueName,string agent, string binding)
         {
             var channel = connection.CreateModel();
 
-            channel.ExchangeDeclare(exchange:exchangeAgent, type:"topic");
+            channel.ExchangeDeclare(exchange:agent, type:"direct");
             queueName = channel.QueueDeclare().QueueName;
+
+            channel.QueueBind(queue: queueName, exchange: exchangeAgent, routingKey: binding);
 
             return channel;
         }
 
+        /* // needed for topic
         private static void BindTopicsToQueue(IModel channel, string queueName , List<string> bindings)
         {
             foreach (var binding in bindings)
@@ -29,7 +35,7 @@ namespace Consumer
                 channel.QueueBind(queue: queueName, exchange: exchangeAgent, routingKey: binding);
             }
         }
-
+        */
         private static string ReceiveFromQueue(IModel channel, string queueName)
         {
             string messageReceived = "";
@@ -53,16 +59,26 @@ namespace Consumer
 
         static void Main(string[] args)
         {
-            var factory = new ConnectionFactory() {HostName = "localhost"};
+            var factory = new ConnectionFactory() {HostName = hostName};
             var queueName = "";
+
+            Console.WriteLine("Enter a consumer ID:");
+            consumerID = Console.ReadLine();
+
+            Console.WriteLine("Enter a broker ID:");
+            exchangeAgent += Console.ReadLine();
+
+            Subscriptions sub = new Subscriptions(exchangeAgent, hostName, consumerID);
+
+            var subFeedThreadReference = new ThreadStart(sub.SendSubscriptions);
+            Thread subFeedThread = new Thread(subFeedThreadReference);
+            subFeedThread.Start();
+
+
             using (var connection = factory.CreateConnection())
             {
-                using (var channel = OpenChannelOnBroker(connection, ref queueName))
+                using (var channel = OpenChannelOnBroker(connection, ref queueName, exchangeAgent, $"C{consumerID}"))
                 {
-                    var topics=new List<string>();
-                    topics.Add("");
-                    //TODO add topics
-                    BindTopicsToQueue(channel,queueName,topics);
 
                     Console.WriteLine("Awaiting Messages...");
 

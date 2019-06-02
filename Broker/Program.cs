@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
+using System.Threading;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
@@ -12,6 +14,8 @@ namespace Broker
         private static string exchangeAgentBrokerConsumer = "";
         private static int brokerNumber=0;
         private static string receiverQueueName = "";
+
+        public static Dictionary<string,List<string>> subscriptions;
 
 
         private static void Broker(IModel channelReceiver, IModel channelSender)
@@ -26,7 +30,12 @@ namespace Broker
                 Console.WriteLine(" [x] Received '{0}':'{1}'",
                     routingKey, message);
                 //
-                SendToQueue(channelSender, message);
+                var receivers = FilterMessageBasedOnSubscriptions(message);
+
+                foreach(var receiver in receivers)
+                {
+                    SendToQueue(channelSender, message, exchangeAgentBrokerConsumer, receiver);
+                }
                 //
 
             };
@@ -39,50 +48,91 @@ namespace Broker
         private static void SetUpSendQueue(IModel channel)
         {
             exchangeAgentBrokerConsumer = "B" + brokerNumber;
-            channel.ExchangeDeclare(exchangeAgentBrokerConsumer, type: "topic");
+            channel.ExchangeDeclare(exchangeAgentBrokerConsumer, type: "direct");
         }
 
-        private static void SetUpReceiveQueue(IModel channel)
+        public static void SetUpReceiveQueue(IModel channel, string agent)
         {
-            channel.ExchangeDeclare(exchange: exchangeAgentPublishBroker,
+            channel.ExchangeDeclare(exchange: agent,
                 type: "direct");
 
             receiverQueueName = channel.QueueDeclare().QueueName;
-            channel.QueueBind(receiverQueueName, exchangeAgentPublishBroker, routingKey: "");
+            channel.QueueBind(receiverQueueName, agent, routingKey: "");
 
         }
 
-        private static void SendToQueue(IModel channel, string message)
+        private static void SendToQueue(IModel channel, string message, string agent, string binding)
         {
             var encodedMessage = Encoding.UTF8.GetBytes(message);
 
-            channel.BasicPublish(exchange: exchangeAgentBrokerConsumer, routingKey: "", basicProperties: null, body: encodedMessage);
+            channel.BasicPublish(exchange: agent, routingKey: binding, basicProperties: null, body: encodedMessage);
         }
 
+        //TODO: Make Propper Filtering!
+        public static HashSet<string> FilterMessageBasedOnSubscriptions(string message)
+        {
+
+            int publication;
+            int.TryParse(message.Split(':')[1], out publication);
+
+            HashSet<string> receivers = new HashSet<string>();
+
+            foreach(var receiver in subscriptions.Keys)
+            {
+                foreach(var sub in subscriptions[receiver])
+                {
+
+                    //TODO: needs work for interpreting subscriptions
+                    if(publication%2==0 && sub == "par")
+                    {
+                        receivers.Add(receiver);
+                    }
+                    if(publication%2==1 && sub == "impar")
+                    {
+                        receivers.Add(receiver);
+                    }
+                }
+            }
+
+            return receivers;
+        }
 
 
 
         public static void Main(string[] args)
         {
+            subscriptions = new Dictionary<string, List<string>>();
+
             Console.WriteLine("EnterBrokerNumber:");
             var bnumber = Console.ReadLine();
             int.TryParse(bnumber, out brokerNumber);
 
             Console.WriteLine($"Broker {brokerNumber} is up and running.");
 
+            Subscriptions.brokerIdentifier = $"B{brokerNumber}";
+            Subscriptions.brokerExchangeAgentSubscriptions = $"B{brokerNumber}Subscriptions";
+            Subscriptions.hostName = "localhost";
+
+            
+            var subFeedThreadReference = new ThreadStart(Subscriptions.ReceiveSubscriptions);
+            Thread subFeedThread = new Thread(subFeedThreadReference);
+            subFeedThread.Start();
+
+            
             var factory = new ConnectionFactory() { HostName = "localhost" };
             using (var connection = factory.CreateConnection())
             {
                 var channelReceiver = connection.CreateModel();
                 var channelSender = connection.CreateModel();
 
-                SetUpReceiveQueue(channelReceiver);
+                SetUpReceiveQueue(channelReceiver, exchangeAgentPublishBroker);
                 SetUpSendQueue(channelSender);
 
                 Broker(channelReceiver, channelSender);
 
                 Console.ReadLine();
             }
+            
         }
     }
 }
