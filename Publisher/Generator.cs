@@ -8,23 +8,29 @@ namespace Publisher
     {
         private int numberOfSubscriptions = 0;
         private string identifier;
-        private Random rng;
         public Generator(int numberOfSubscriptions, string identifier)
         {
             this.identifier = identifier;
             this.numberOfSubscriptions = numberOfSubscriptions;
-            rng=new Random();
         }
 
-        //TODO: add a propper subscription generation function
-        public string Generate()
+        //the generated publications are read from file
+        public List<string> Generate(string publisherIdentifier)
         {
-            if (numberOfSubscriptions > 0)
-            {
-                numberOfSubscriptions--;
-                return $"{identifier}:{rng.Next()}";
-            }
-            return "";
+            var fileName = @"D:\Master\EBS\EBS\publications.txt";
+            return readFromFile(publisherIdentifier,fileName);
+        }
+
+        public List<string> readFromFile(string publisherIdentifier,string fileName){
+        var subs = new List<string>();
+        string[] lines = System.IO.File.ReadAllLines(fileName);
+
+        foreach (string line in lines)
+        {
+            subs.Add($"P{publisherIdentifier}:"+line.Replace("\0", ""));
+        }
+
+            return subs;
         }
     }
 }

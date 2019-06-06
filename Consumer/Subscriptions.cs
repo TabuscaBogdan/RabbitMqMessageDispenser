@@ -36,7 +36,7 @@ namespace Consumer
         {
             var byteMessage = Encoding.UTF8.GetBytes(message);
             channel.BasicPublish(exchange: agent, routingKey: binding, basicProperties: null, body: byteMessage);
-            Console.WriteLine($"Sent {message} on the queue for subscriptions. Agent:{agent} RotingKey: {""}.");
+            Console.WriteLine($"Sent {message} on the queue for subscriptions.");
         }
 
         public void SendSubscriptions()
@@ -63,24 +63,25 @@ namespace Consumer
         }
 
 
-        //------------------------------
-        //TODO Ecaterina Mihaela
-        //trebuie facute in asa fel incat brokerul sa primeasca o lista de cv de genu C1:{categorie}<conditie>,{categorie}<conditie>...
-        //citire din fisier sau de la mana sau vei tu cum
-        //trebuie sa lucrezi in stransa legatura cu cine implementeaza filtrul pe broker (Madalina Gabriela)
+        //the generated subscriptions are read from the file
 
         public List<string> GetSubscriptions(string consumerId)
         {
             var subs = new List<string>();
+            var fileName = @"D:\Master\EBS\EBS\subscriptions_C"+ consumerId+".txt";
+            subs = readFromFile(consumerId,fileName);
+            return subs;
+        }
 
-            if(consumerId=="1")
-            {
-                subs.Add($"C{consumerId}:impar");
-            }
-            else
-            {
-                subs.Add($"C{consumerId}:par");
-            }
+        public List<string> readFromFile(string consumerId, string fileName){
+        var subs = new List<string>();
+        string[] lines = System.IO.File.ReadAllLines(fileName);
+
+        foreach (string line in lines)
+        {
+            subs.Add($"C{consumerId}:"+line.Replace("\0", ""));
+        }
+
             return subs;
         }
     }

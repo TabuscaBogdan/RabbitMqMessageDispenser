@@ -12,6 +12,7 @@ namespace Broker
         public static string hostName;
         public static string brokerIdentifier;
         public static string queueName = "";
+        public static List<string> receivedSubscriptions=new List<string>();
 
 
         public static void ReceiveSubscriptions()
@@ -37,12 +38,14 @@ namespace Broker
                 {
                     var body = ea.Body;
                     var message = Encoding.UTF8.GetString(body);
+                    receivedSubscriptions.Add(message.Replace("\0", ""));
                     var routingKey = ea.RoutingKey;
-                    Console.WriteLine($"Rceived subscription {message}");
+                    Console.WriteLine($"Received subscription {message}");
 
-                    var subscriberID = message.Split(':')[0];
-                    var subscription = message.Split(':')[1];
-
+                    string subscriptionMap = message.Replace("\0", "");
+                    var subscriberID = subscriptionMap.Split(':')[0];
+                    var subscription = subscriptionMap.Split(':')[1];
+                    
                     if (Program.subscriptions.ContainsKey(subscriberID))
                     {
                         Program.subscriptions[subscriberID].Add(subscription);

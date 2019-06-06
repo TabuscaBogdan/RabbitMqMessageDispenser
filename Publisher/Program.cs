@@ -1,17 +1,19 @@
 ﻿using System;
 using System.Text;
 using RabbitMQ.Client;
+using System.Collections.Generic;
 
 namespace Publisher
 {
     class Program
     {
         private static readonly string exchangeAgent = "publications";
+        private static List<string> pub = new List<string>();
         private static void SendToQueue(IModel channel, string message)
         {
             var byteMessage = Encoding.UTF8.GetBytes(message);
             channel.BasicPublish(exchange: exchangeAgent, routingKey: "", basicProperties: null, body: byteMessage);
-            Console.WriteLine($"Sent {message} on the queue.");
+            Console.WriteLine($"Sent {message} on the queue for publications.");
         }
 
         static void Main(string[] args)
@@ -25,12 +27,10 @@ namespace Publisher
                 using (var channel = connection.CreateModel())
                 {
                     channel.ExchangeDeclare(exchange:exchangeAgent, type: "direct");
-
-                    string pub = generator.Generate();
-                    while (pub!="")
+                    pub = generator.Generate(identifier);
+                    foreach(string publication in pub)
                     {
-                        SendToQueue(channel,pub);
-                        pub = generator.Generate();
+                        SendToQueue(channel,publication);
                     }
                 }
             }

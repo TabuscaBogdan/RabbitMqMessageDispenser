@@ -47,7 +47,7 @@ namespace Consumer
                 var message = Encoding.UTF8.GetString(body);
                 messageReceived = message;
                 var routingKey = eventArguments.RoutingKey;
-                Console.WriteLine(" [x] Received '{0}':'{1}'",
+                Console.WriteLine(" [x] Received publication '{0}':'{1}'",
                     routingKey, message);
             };
             channel.BasicConsume(queue: queueName,

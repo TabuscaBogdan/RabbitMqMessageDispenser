@@ -8,7 +8,7 @@ using RabbitMQ.Client.Events;
 
 namespace Broker
 {
-    class Program
+    public static class Program
     {
         private static readonly string exchangeAgentPublishBroker = "publications";
         private static string exchangeAgentBrokerConsumer = "";
@@ -16,6 +16,7 @@ namespace Broker
         private static string receiverQueueName = "";
 
         public static Dictionary<string,List<string>> subscriptions;
+        public static List<string> publications=new List<string>();
 
 
         private static void Broker(IModel channelReceiver, IModel channelSender)
@@ -27,17 +28,17 @@ namespace Broker
                 var body = eventArguments.Body;
                 var message = Encoding.UTF8.GetString(body);
                 var routingKey = eventArguments.RoutingKey;
-                Console.WriteLine(" [x] Received '{0}':'{1}'",
-                    routingKey, message);
-                //
-                var receivers = FilterMessageBasedOnSubscriptions(message);
+                Console.WriteLine(" [x] Received publication'{0}'", message);
+ 
+                string publication = message.Split(":")[1];
+               
+                var receivers = FilterMessageBasedOnSubscriptions(publication);
 
                 foreach(var receiver in receivers)
                 {
                     SendToQueue(channelSender, message, exchangeAgentBrokerConsumer, receiver);
                 }
-                //
-
+ 
             };
             channelReceiver.BasicConsume(queue: receiverQueueName,
                 autoAck: true,
@@ -68,33 +69,104 @@ namespace Broker
             channel.BasicPublish(exchange: agent, routingKey: binding, basicProperties: null, body: encodedMessage);
         }
 
-        //TODO: Make Propper Filtering!
+        //Matching algorithm between publications and subscriptions
         public static HashSet<string> FilterMessageBasedOnSubscriptions(string message)
         {
-
-            int publication;
-            int.TryParse(message.Split(':')[1], out publication);
-
+            string pub = message.Replace("\0", "");
+            string publication = pub.Substring(1, pub.Length - 2);
+            string[] fieldsPublication = publication.Split(';');
+            
             HashSet<string> receivers = new HashSet<string>();
-
+            
             foreach(var receiver in subscriptions.Keys)
             {
+               
                 foreach(var sub in subscriptions[receiver])
                 {
-
-                    //TODO: needs work for interpreting subscriptions
-                    if(publication%2==0 && sub == "par")
-                    {
+                    string subscription = sub.Substring(1, sub.Length - 2);
+                    string[] fieldsSub = subscription.Split(';');
+                    int sizeSub = fieldsSub.Length;
+                    int index = 0;                  
+                    foreach (string fieldSub in fieldsSub){
+                        foreach(string fieldPub in fieldsPublication){           
+                            string topicSub = fieldSub.Split(',')[0];
+                            string topicPub = fieldPub.Split(',')[0];
+                            string valueSub = fieldSub.Split(',')[2];
+                            string valuePub = fieldPub.Split(',')[1];
+                            string operatorSub = fieldSub.Split(',')[1];
+                            if (topicSub.Equals(topicPub)){                                
+                                switch (topicSub.Substring(1))
+                                {
+                                    case "patient-name":
+                                    case "eye-color":
+                                        if (valueSub.Equals(valuePub))
+                                        {
+                                            index = index + 1;
+                                        }
+                                        
+                                        break;
+                                    case "DoB":
+                                        string valPub = valuePub.Substring(1, valuePub.Length - 3);
+                                        string valSub = valueSub.Substring(1, valueSub.Length - 3);
+                                        if(compareDoB(operatorSub, valPub, valSub))
+                                        {
+                                            index = index + 1;
+                                        }
+                                        break;
+                                    case "height":
+                                    case "heart-rate":
+                                        string a = valuePub.Substring(0, valuePub.Length - 1);
+                                        string b = valueSub.Substring(0, valueSub.Length - 1);
+                                        if (Operator(operatorSub, Convert.ToDouble(a), Convert.ToDouble(b)))
+                                        {
+                                            index = index + 1;
+                                        }
+                                        
+                                        break;
+                                }
+                           
+                            }
+                            
+                        }
+                    }
+                    if(index==sizeSub){                   
                         receivers.Add(receiver);
                     }
-                    if(publication%2==1 && sub == "impar")
-                    {
-                        receivers.Add(receiver);
-                    }
+                    
                 }
             }
 
             return receivers;
+        }
+
+        public static bool compareDoB(string op,string date1, string date2)
+        {
+            String format = "dd/MM/yyyy";
+            string date1S = date1.Replace(".","/");
+            string date2S = date2.Replace(".", "/");
+            switch (op)
+            {
+                case ">": return DateTime.ParseExact(date1S, format, null) > DateTime.ParseExact(date2S, format, null);
+                case "<": return DateTime.ParseExact(date1S, format, null) < DateTime.ParseExact(date2S, format, null);
+                case "==": return DateTime.ParseExact(date1S, format, null) == DateTime.ParseExact(date2S, format, null);
+                case ">=": return DateTime.ParseExact(date1S, format, null) >= DateTime.ParseExact(date2S, format, null);
+                case "<=": return DateTime.ParseExact(date1S, format, null) <= DateTime.ParseExact(date2S, format, null);
+            }
+
+            return false;
+        }
+
+        public static Boolean Operator(this string logic, Double x, Double y)
+        {
+            switch (logic)
+            {
+                case ">": return x > y;
+                case "<": return x < y;
+                case "==": return x == y;
+                case ">=": return x >= y;
+                case "<=": return x <= y;
+                default: throw new Exception("invalid logic");
+            }
         }
 
 
