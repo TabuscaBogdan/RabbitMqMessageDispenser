@@ -6,6 +6,7 @@ using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using RabbitMQ.Client.Exceptions;
 using System.Threading;
+using Utils;
 
 namespace Consumer
 {
@@ -13,7 +14,7 @@ namespace Consumer
     {
         private static string exchangeAgent = "B";
         private static string consumerID = "";
-        private static string hostName = "localhost";
+        private static string hostName = Constants.RabbitMqServerAddress;
 
         public static IModel OpenChannelOnBroker(IConnection connection,ref string queueName,string agent, string binding)
         {
@@ -61,12 +62,23 @@ namespace Consumer
         {
             var factory = new ConnectionFactory() {HostName = hostName};
             var queueName = "";
+            if (args.Length == 0)
+            {
+                Console.WriteLine("Enter a consumer ID:");
+                consumerID = Console.ReadLine();
 
-            Console.WriteLine("Enter a consumer ID:");
-            consumerID = Console.ReadLine();
+                Console.WriteLine("Enter a broker ID:");
+                exchangeAgent += Console.ReadLine();
+            }
+            else
+            {
 
-            Console.WriteLine("Enter a broker ID:");
-            exchangeAgent += Console.ReadLine();
+                consumerID = args[0];
+                exchangeAgent += args[1];
+                Console.WriteLine($"Consumer ID:{consumerID}");
+                Console.WriteLine($"Broker ID:{exchangeAgent}");
+            }
+
 
             Subscriptions sub = new Subscriptions(exchangeAgent, hostName, consumerID);
 

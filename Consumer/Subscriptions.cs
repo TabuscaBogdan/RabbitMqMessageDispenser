@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Utils;
 
 namespace Consumer
 {
@@ -51,11 +52,9 @@ namespace Consumer
                     SetUpSendQueue(channel);
                     var subscriptions = GetSubscriptions(consumerIdentifier);
 
-                    foreach(var sub in subscriptions)
+                    foreach (var sub in subscriptions)
                     {
-
-                         SendToQueue(channel, sub, brokerExchangeAgent, binding);
-
+                        SendToQueue(channel, sub, brokerExchangeAgent, binding);
                     }
                 }
             }
@@ -68,19 +67,20 @@ namespace Consumer
         public List<string> GetSubscriptions(string consumerId)
         {
             var subs = new List<string>();
-            var fileName = System.IO.Path.Combine(Environment.CurrentDirectory, "test_small_files/subscriptions_C" + consumerId + ".txt");
-            subs = readFromFile(consumerId,fileName);
+            var fileName = String.Format(Constants.SubscriptionsPath, consumerId);
+            subs = readFromFile(consumerId, fileName);
             return subs;
         }
 
-        public List<string> readFromFile(string consumerId, string fileName){
-        var subs = new List<string>();
-        string[] lines = System.IO.File.ReadAllLines(fileName);
-
-        foreach (string line in lines)
+        public List<string> readFromFile(string consumerId, string fileName)
         {
-            subs.Add($"C{consumerId}:"+line.Replace("\0", ""));
-        }
+            var subs = new List<string>();
+            string[] lines = FileReader.ReadAllLines(fileName);
+
+            foreach (string line in lines)
+            {
+                subs.Add($"C{consumerId}:" + line.Replace("\0", ""));
+            }
 
             return subs;
         }

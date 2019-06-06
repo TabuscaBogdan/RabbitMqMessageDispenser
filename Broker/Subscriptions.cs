@@ -3,6 +3,7 @@ using RabbitMQ.Client.Events;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Utils;
 
 namespace Broker
 {
@@ -17,7 +18,7 @@ namespace Broker
 
         public static void ReceiveSubscriptions()
         {
-            var factory = new ConnectionFactory() { HostName = "localhost" };
+            var factory = new ConnectionFactory() { HostName = Constants.RabbitMqServerAddress };
             using (var connection = factory.CreateConnection())
             using (var channel = connection.CreateModel())
             {

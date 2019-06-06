@@ -1,34 +1,29 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Utils;
 
 namespace Publisher
 {
     public class Generator
     {
-        private int numberOfSubscriptions = 0;
         private string identifier;
-        public Generator(int numberOfSubscriptions, string identifier)
+        public Generator(string identifier)
         {
             this.identifier = identifier;
-            this.numberOfSubscriptions = numberOfSubscriptions;
         }
 
         //the generated publications are read from file
-        public List<string> Generate(string publisherIdentifier)
+        public List<string> Generate()
         {
-            var fileName = System.IO.Path.Combine(Environment.CurrentDirectory, "publications.txt");
-            return readFromFile(publisherIdentifier,fileName);
-        }
+           // return readFromFile(publisherIdentifier, Constants.PublicationsFileName);
+            var subs = new List<string>();
+            string[] lines = FileReader.ReadAllLines(Constants.PublicationsFileName);
 
-        public List<string> readFromFile(string publisherIdentifier,string fileName){
-        var subs = new List<string>();
-        string[] lines = System.IO.File.ReadAllLines(fileName);
-
-        foreach (string line in lines)
-        {
-            subs.Add($"P{publisherIdentifier}:"+line.Replace("\0", ""));
-        }
+            foreach (string line in lines)
+            {
+                subs.Add($"P{identifier}:" + line.Replace("\0", ""));
+            }
 
             return subs;
         }
