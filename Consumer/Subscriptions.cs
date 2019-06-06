@@ -68,7 +68,7 @@ namespace Consumer
         public List<string> GetSubscriptions(string consumerId)
         {
             var subs = new List<string>();
-            var fileName = @"D:\Master\EBS\EBS\subscriptions_C"+ consumerId+".txt";
+            var fileName = System.IO.Path.Combine(Environment.CurrentDirectory, "test_small_files/subscriptions_C" + consumerId + ".txt");
             subs = readFromFile(consumerId,fileName);
             return subs;
         }

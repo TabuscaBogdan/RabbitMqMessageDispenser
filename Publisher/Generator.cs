@@ -17,7 +17,7 @@ namespace Publisher
         //the generated publications are read from file
         public List<string> Generate(string publisherIdentifier)
         {
-            var fileName = @"D:\Master\EBS\EBS\publications.txt";
+            var fileName = System.IO.Path.Combine(Environment.CurrentDirectory, "publications.txt");
             return readFromFile(publisherIdentifier,fileName);
         }
 
