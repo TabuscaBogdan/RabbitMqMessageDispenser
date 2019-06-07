@@ -17,7 +17,7 @@ namespace Publisher
         public List<Publication> Generate()
         {
             var publications = new List<Publication>();
-            string[] lines = FileReader.ReadAllLines(Constants.PublicationsFileName);
+            string[] lines = FileReader.ReadAllLines(String.Format(Constants.PublicationsFileName,identifier));
 
             foreach (string line in lines)
             {

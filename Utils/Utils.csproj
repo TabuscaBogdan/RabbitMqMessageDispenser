@@ -15,7 +15,13 @@
     <None Update="Resources\subscriptions.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Update="Resources\test_small_files\publications.txt">
+    <None Update="Resources\test_small_files\publications_P1.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\test_small_files\publications_P3.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\test_small_files\publications_P2.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="Resources\test_small_files\subscriptions_C1.txt">

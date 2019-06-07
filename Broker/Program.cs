@@ -13,13 +13,78 @@ namespace Broker
 {
     public static class Program
     {
-        private static readonly string exchangeAgentPublishBroker = "publications";
+        private static readonly string publicationsQueueName = "publications";
         private static string exchangeAgentBrokerConsumer = "";
         private static int brokerNumber = 0;
         private static string receiverQueueName = "";
 
         public static Dictionary<string, List<Subscription>> subscriptions = new Dictionary<string, List<Subscription>>();
         public static List<Publication> publications = new List<Publication>();
+
+        public static void Main(string[] args)
+        {
+            if (args.Length == 0)
+            {
+                Console.WriteLine("EnterBrokerNumber:");
+                var bnumber = Console.ReadLine();
+                int.TryParse(bnumber, out brokerNumber);
+            }
+            else
+            {
+                int.TryParse(args[0], out brokerNumber);
+            }
+
+            Console.WriteLine($"Broker {brokerNumber} is up and running.");
+
+            Subscriptions.brokerIdentifier = $"B{brokerNumber}";
+            Subscriptions.brokerExchangeAgentSubscriptions = $"B{brokerNumber}Subscriptions";
+            Subscriptions.hostName = Constants.RabbitMqServerAddress;
+
+
+            var subFeedThreadReference = new ThreadStart(Subscriptions.ReceiveSubscriptions);
+            Thread subFeedThread = new Thread(subFeedThreadReference);
+            subFeedThread.Start();
+
+
+            var factory = new ConnectionFactory() { HostName = Constants.RabbitMqServerAddress };
+            using (var connection = factory.CreateConnection())
+            {
+                var channelRecievePublications = connection.CreateModel();
+
+                var channelSendPublications = connection.CreateModel();
+
+                SetUpReceiveQueue(channelRecievePublications);
+                SetUpSendQueue(channelSendPublications);
+
+                Broker(channelRecievePublications, channelSendPublications);
+
+                Console.ReadLine();
+            }
+
+        }
+
+        public static void SetUpReceiveQueue(IModel channel)
+        {
+
+            channel.QueueDeclare(queue: publicationsQueueName,
+                                 durable: true,
+                                 exclusive: false,
+                                 autoDelete: false,
+                                 arguments: null);
+            channel.BasicQos(prefetchSize: 0, prefetchCount: 1, global: false);
+
+            //channel.ExchangeDeclare(exchange: agent,
+            //    type: "direct");
+
+            //receiverQueueName = channel.QueueDeclare().QueueName;
+            //channel.QueueBind(receiverQueueName, agent, routingKey: "");
+
+        }
+        private static void SetUpSendQueue(IModel channel)
+        {
+            exchangeAgentBrokerConsumer = "B" + brokerNumber;
+            channel.ExchangeDeclare(exchangeAgentBrokerConsumer, type: "direct");
+        }
 
 
         private static void Broker(IModel channelReceiver, IModel channelSender)
@@ -46,21 +111,6 @@ namespace Broker
 
         }
 
-        private static void SetUpSendQueue(IModel channel)
-        {
-            exchangeAgentBrokerConsumer = "B" + brokerNumber;
-            channel.ExchangeDeclare(exchangeAgentBrokerConsumer, type: "direct");
-        }
-
-        public static void SetUpReceiveQueue(IModel channel, string agent)
-        {
-            channel.ExchangeDeclare(exchange: agent,
-                type: "direct");
-
-            receiverQueueName = channel.QueueDeclare().QueueName;
-            channel.QueueBind(receiverQueueName, agent, routingKey: "");
-
-        }
 
         private static void SendToQueue(IModel channel, Publication publication, string agent, string binding)
         {
@@ -173,47 +223,5 @@ namespace Broker
         }
 
 
-
-        public static void Main(string[] args)
-        {
-            Console.WriteLine("EnterBrokerNumber:");
-
-            if(args.Length ==0)
-            {
-                var bnumber = Console.ReadLine();
-                int.TryParse(bnumber, out brokerNumber);
-            }
-            else
-            {
-                int.TryParse(args[0], out brokerNumber);
-            }
-
-            Console.WriteLine($"Broker {brokerNumber} is up and running.");
-
-            Subscriptions.brokerIdentifier = $"B{brokerNumber}";
-            Subscriptions.brokerExchangeAgentSubscriptions = $"B{brokerNumber}Subscriptions";
-            Subscriptions.hostName = Constants.RabbitMqServerAddress;
-
-
-            var subFeedThreadReference = new ThreadStart(Subscriptions.ReceiveSubscriptions);
-            Thread subFeedThread = new Thread(subFeedThreadReference);
-            subFeedThread.Start();
-
-
-            var factory = new ConnectionFactory() { HostName = Constants.RabbitMqServerAddress };
-            using (var connection = factory.CreateConnection())
-            {
-                var channelReceiver = connection.CreateModel();
-                var channelSender = connection.CreateModel();
-
-                SetUpReceiveQueue(channelReceiver, exchangeAgentPublishBroker);
-                SetUpSendQueue(channelSender);
-
-                Broker(channelReceiver, channelSender);
-
-                Console.ReadLine();
-            }
-
-        }
     }
 }

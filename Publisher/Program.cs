@@ -29,30 +29,41 @@ namespace Publisher
                 Console.WriteLine($"Publisher id: {identifier}");
             }
 
-            var generator = new Generator(identifier);
-            publications = generator.Generate();
 
-            var factory = new ConnectionFactory() { HostName = Constants.RabbitMqServerAddress };
-            using (var connection = factory.CreateConnection())
+            try
             {
-                using (var channel = connection.CreateModel())
+                var generator = new Generator(identifier);
+                publications = generator.Generate();
+                var factory = new ConnectionFactory() { HostName = Constants.RabbitMqServerAddress };
+                using (var connection = factory.CreateConnection())
                 {
-                    channel.ExchangeDeclare(exchange:exchangeAgent, type: "direct");
-                    foreach(var publication in publications)
+                    using (var channel = connection.CreateModel())
                     {
-                        SendToQueue(channel,publication);
+                        channel.QueueDeclare(queue: exchangeAgent, true, false, false, null);
+                        var properties = channel.CreateBasicProperties();
+                        properties.Persistent = true;
+
+
+                        foreach (var publication in publications)
+                        {
+                            SendToQueue(channel, properties, publication);
+                        }
                     }
                 }
             }
-
+            catch(Exception e)
+            {
+                Console.WriteLine(e.ToString());
+                Console.ReadLine();
+            }
             Console.ReadLine();
         }
-        private static void SendToQueue(IModel channel, Publication publication)
+        private static void SendToQueue(IModel channel, IBasicProperties properties, Publication publication)
         {
             string json = JsonConvert.SerializeObject(publication);
             var bytes = Encoding.UTF8.GetBytes(json);
-            channel.BasicPublish(exchange: exchangeAgent, routingKey: "", basicProperties: null, body: bytes);
-            Console.WriteLine($"Sent {publication} on the queue for publications.");
+            channel.BasicPublish(exchange: "", routingKey: exchangeAgent, basicProperties: properties, body: bytes);
+            Console.WriteLine($"Sent publication: {publication} |");
         }
     }
 }
