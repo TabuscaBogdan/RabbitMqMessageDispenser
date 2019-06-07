@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 using System.Threading;
+using Newtonsoft.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using Utils;
+using Utils.Models;
 
 namespace Broker
 {
@@ -16,8 +18,8 @@ namespace Broker
         private static int brokerNumber = 0;
         private static string receiverQueueName = "";
 
-        public static Dictionary<string, List<string>> subscriptions = new Dictionary<string, List<string>>();
-        public static List<string> publications = new List<string>();
+        public static Dictionary<string, List<Subscription>> subscriptions = new Dictionary<string, List<Subscription>>();
+        public static List<Publication> publications = new List<Publication>();
 
 
         private static void Broker(IModel channelReceiver, IModel channelSender)
@@ -27,19 +29,16 @@ namespace Broker
             consumer.Received += (model, eventArguments) =>
             {
                 var body = eventArguments.Body;
-                var message = Encoding.UTF8.GetString(body);
+                var publication = Serialization.Deserialize<Publication>(body);
                 var routingKey = eventArguments.RoutingKey;
-                Console.WriteLine(" [x] Received publication'{0}'", message);
+                Console.WriteLine($" [x] Received publication'{publication}'");
 
-                string publication = message.Split(":")[1];
-
-                var receivers = FilterMessageBasedOnSubscriptions(publication);
+                var receivers = FilterMessageBasedOnSubscriptions(publication.Contents);
 
                 foreach (var receiver in receivers)
                 {
-                    SendToQueue(channelSender, message, exchangeAgentBrokerConsumer, receiver);
+                    SendToQueue(channelSender, publication, exchangeAgentBrokerConsumer, receiver);
                 }
-
             };
             channelReceiver.BasicConsume(queue: receiverQueueName,
                 autoAck: true,
@@ -63,11 +62,10 @@ namespace Broker
 
         }
 
-        private static void SendToQueue(IModel channel, string message, string agent, string binding)
+        private static void SendToQueue(IModel channel, Publication publication, string agent, string binding)
         {
-            var encodedMessage = Encoding.UTF8.GetBytes(message);
-
-            channel.BasicPublish(exchange: agent, routingKey: binding, basicProperties: null, body: encodedMessage);
+            var bytes = Serialization.SerializeAndGetBytes(publication);
+            channel.BasicPublish(exchange: agent, routingKey: binding, basicProperties: null, body: bytes);
         }
 
         //Matching algorithm between publications and subscriptions
@@ -84,7 +82,7 @@ namespace Broker
 
                 foreach (var sub in subscriptions[receiver])
                 {
-                    string subscription = sub.Substring(1, sub.Length - 2);
+                    string subscription = sub.Filter.Substring(1, sub.Filter.Length - 2);
                     string[] fieldsSub = subscription.Split(';');
                     int sizeSub = fieldsSub.Length;
                     int index = 0;

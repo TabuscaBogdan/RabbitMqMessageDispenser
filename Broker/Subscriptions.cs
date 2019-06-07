@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using Utils;
+using Utils.Models;
 
 namespace Broker
 {
@@ -13,7 +14,7 @@ namespace Broker
         public static string hostName;
         public static string brokerIdentifier;
         public static string queueName = "";
-        public static List<string> receivedSubscriptions=new List<string>();
+        public static List<Subscription> receivedSubscriptions = new List<Subscription>();
 
 
         public static void ReceiveSubscriptions()
@@ -37,24 +38,18 @@ namespace Broker
                 var consumer = new EventingBasicConsumer(channel);
                 consumer.Received += (model, ea) =>
                 {
-                    var body = ea.Body;
-                    var message = Encoding.UTF8.GetString(body);
-                    receivedSubscriptions.Add(message.Replace("\0", ""));
+                    var message = Serialization.Deserialize<Subscription>(ea.Body);
+                    receivedSubscriptions.Add(message);
                     var routingKey = ea.RoutingKey;
                     Console.WriteLine($"Received subscription {message}");
 
-                    string subscriptionMap = message.Replace("\0", "");
-                    var subscriberID = subscriptionMap.Split(':')[0];
-                    var subscription = subscriptionMap.Split(':')[1];
-                    
-                    if (Program.subscriptions.ContainsKey(subscriberID))
+                    if (Program.subscriptions.ContainsKey(message.SenderId))
                     {
-                        Program.subscriptions[subscriberID].Add(subscription);
+                        Program.subscriptions[message.SenderId].Add(message);
                     }
                     else
                     {
-                        Program.subscriptions[subscriberID] = new List<string>();
-                        Program.subscriptions[subscriberID].Add(subscription);
+                        Program.subscriptions[message.SenderId] = new List<Subscription>() { message };
                     }
                 };
                 channel.BasicConsume(queue: queueName,

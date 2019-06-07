@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using Utils;
+using Utils.Models;
 
 namespace Publisher
 {
@@ -13,19 +14,24 @@ namespace Publisher
             this.identifier = identifier;
         }
 
-        //the generated publications are read from file
-        public List<string> Generate()
+        public List<Publication> Generate()
         {
-           // return readFromFile(publisherIdentifier, Constants.PublicationsFileName);
-            var subs = new List<string>();
+            var publications = new List<Publication>();
             string[] lines = FileReader.ReadAllLines(Constants.PublicationsFileName);
 
             foreach (string line in lines)
             {
-                subs.Add($"P{identifier}:" + line.Replace("\0", ""));
+                var publication = new Publication
+                {
+                    Contents = line.Replace("\0", ""),
+                    Id = Guid.NewGuid().ToString(),
+                    Timestamp = DateTime.Now,
+                    PublisherId = $"P{identifier}"
+                };
+                publications.Add(publication);
             }
 
-            return subs;
+            return publications;
         }
     }
 }

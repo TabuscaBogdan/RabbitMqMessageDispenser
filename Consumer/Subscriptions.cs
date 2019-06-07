@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using Utils;
+using Utils.Models;
 
 namespace Consumer
 {
@@ -27,17 +28,16 @@ namespace Consumer
             return channel;
         }
 
-
         public void SetUpSendQueue(IModel channel)
         {
             channel.ExchangeDeclare(brokerExchangeAgent, type: "direct");
         }
 
-        public void SendToQueue(IModel channel, string message, string agent, string binding)
+        public void SendToQueue(IModel channel, Subscription subscription, string agent, string binding)
         {
-            var byteMessage = Encoding.UTF8.GetBytes(message);
+            var byteMessage = Serialization.SerializeAndGetBytes(subscription);
             channel.BasicPublish(exchange: agent, routingKey: binding, basicProperties: null, body: byteMessage);
-            Console.WriteLine($"Sent {message} on the queue for subscriptions.");
+            Console.WriteLine($"Sent subscriptions: {subscription}");
         }
 
         public void SendSubscriptions()
@@ -61,27 +61,27 @@ namespace Consumer
             Console.ReadLine();
         }
 
-
-        //the generated subscriptions are read from the file
-
-        public List<string> GetSubscriptions(string consumerId)
+        public List<Subscription> GetSubscriptions(string consumerId)
         {
-            var subs = new List<string>();
             var fileName = String.Format(Constants.SubscriptionsPath, consumerId);
-            subs = readFromFile(consumerId, fileName);
-            return subs;
+            return ReadSubscriptionsFromFile(consumerId, fileName);
         }
 
-        public List<string> readFromFile(string consumerId, string fileName)
+        public List<Subscription> ReadSubscriptionsFromFile(string consumerId, string fileName)
         {
-            var subs = new List<string>();
+            var subs = new List<Subscription>();
             string[] lines = FileReader.ReadAllLines(fileName);
 
             foreach (string line in lines)
             {
-                subs.Add($"C{consumerId}:" + line.Replace("\0", ""));
+                var s = new Subscription
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Filter = line.Replace("\0", ""),
+                    SenderId = $"C{consumerId}:"
+                };
+                subs.Add(s);
             }
-
             return subs;
         }
     }
