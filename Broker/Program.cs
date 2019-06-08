@@ -143,7 +143,7 @@ namespace Broker
             Console.WriteLine($" [*] Send to consumer {publication}");
 
             var bytes = Serialization.SerializeAndGetBytes(publication);
-            channel.QueueDeclare(queue: receiverId, true, false, false, null);
+            channel.QueueDeclare(queue: receiverId, durable: true, exclusive: false, autoDelete: false, arguments: null);
             var properties = channel.CreateBasicProperties();
             properties.Persistent = true;
             channel.BasicPublish(exchange: "", routingKey: receiverId, basicProperties: properties, body: bytes);

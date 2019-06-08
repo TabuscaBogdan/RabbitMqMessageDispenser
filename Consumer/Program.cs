@@ -25,15 +25,33 @@ namespace Consumer
                 Console.WriteLine("Enter a consumer ID:");
                 consumerId = Console.ReadLine();
 
-                Console.WriteLine("Enter a broker ID:");
-                brokerId += Console.ReadLine();
+                Console.WriteLine("Enter a broker ID (if random leave empty):");
+                var broker = Console.ReadLine();
+
+                if (string.IsNullOrWhiteSpace(broker))
+                {
+                    brokerId += GetRandomBroker();
+                }
+                else
+                {
+                    brokerId += Console.ReadLine();
+                }
+                Console.WriteLine($"Broker ID: {brokerId}");
             }
             else
             {
                 consumerId = args[0];
-                brokerId += args[1];
-                Console.WriteLine($"Consumer ID:{consumerId}");
-                Console.WriteLine($"Broker ID:{brokerId}");
+                Console.WriteLine($"Consumer ID: {consumerId}");
+
+                if (args.Length == 1)
+                {
+                    brokerId += GetRandomBroker();
+                }
+                else
+                {
+                    brokerId += args[1];
+                }
+                Console.WriteLine($"Broker ID: {brokerId}");
             }
             var publicationsQueueName = $"C{consumerId}";
 
@@ -73,16 +91,10 @@ namespace Consumer
             }
         }
 
-        public static IModel OpenChannelOnBroker(IConnection connection, ref string queueName, string agent, string binding)
+        private static string GetRandomBroker()
         {
-            var channel = connection.CreateModel();
-
-            channel.ExchangeDeclare(exchange: agent, type: "direct");
-            queueName = channel.QueueDeclare().QueueName;
-
-            channel.QueueBind(queue: queueName, exchange: brokerId, routingKey: binding);
-
-            return channel;
+            Random r = new Random();
+            return r.Next(1, Constants.NumberOfBrokers).ToString();
         }
     }
 }

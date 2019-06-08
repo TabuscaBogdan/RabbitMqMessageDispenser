@@ -39,7 +39,7 @@ namespace Publisher
                 {
                     using (var channel = connection.CreateModel())
                     {
-                        channel.QueueDeclare(queue: exchangeAgent, true, false, false, null);
+                        channel.QueueDeclare(queue: exchangeAgent, durable: true, exclusive: false, autoDelete: false, arguments: null);
                         var properties = channel.CreateBasicProperties();
                         properties.Persistent = true;
 
@@ -51,7 +51,7 @@ namespace Publisher
                     }
                 }
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 Console.WriteLine(e.ToString());
                 Console.ReadLine();
