@@ -9,56 +9,42 @@ namespace Consumer
 {
     public class Subscriptions
     {
-        private string brokerExchangeAgent;
-        private string hostName;
+        private string brokerId;
+        private string brokerSubscriptionsQueueName;
         private string consumerIdentifier = "";
 
-        public Subscriptions(string brokerExchangeAgent, string hostName, string consumerIdentifier)
+        public Subscriptions(string brokerId, string consumerIdentifier)
         {
-            this.brokerExchangeAgent = brokerExchangeAgent + "Subscriptions";
-            this.hostName = hostName;
+            this.brokerId = brokerId;
+            brokerSubscriptionsQueueName = $"Subscriptions_{brokerId}";
             this.consumerIdentifier = consumerIdentifier;
         }
-
-        private IModel OpenChannelOnBrokerSubscriptions(IConnection connection, string agent)
-        {
-            var channel = connection.CreateModel();
-            channel.ExchangeDeclare(exchange: agent, type: "direct");
-
-            return channel;
-        }
-
-        public void SetUpSendQueue(IModel channel)
-        {
-            channel.ExchangeDeclare(brokerExchangeAgent, type: "direct");
-        }
-
-        public void SendToQueue(IModel channel, Subscription subscription, string agent, string binding)
-        {
-            var byteMessage = Serialization.SerializeAndGetBytes(subscription);
-            channel.BasicPublish(exchange: agent, routingKey: binding, basicProperties: null, body: byteMessage);
-            Console.WriteLine($"Sent subscriptions: {subscription}");
-        }
-
+        
         public void SendSubscriptions()
         {
-            var factory = new ConnectionFactory() { HostName = hostName };
-            var binding = "";
+            var factory = new ConnectionFactory() { HostName = Constants.RabbitMqServerAddress };
 
             using (var connection = factory.CreateConnection())
             {
-                using (var channel = OpenChannelOnBrokerSubscriptions(connection, brokerExchangeAgent))
+                using (var channel = connection.CreateModel())
                 {
-                    SetUpSendQueue(channel);
+                    channel.ExchangeDeclare(exchange: brokerSubscriptionsQueueName, type: "direct");
                     var subscriptions = GetSubscriptions(consumerIdentifier);
 
                     foreach (var sub in subscriptions)
                     {
-                        SendToQueue(channel, sub, brokerExchangeAgent, binding);
+                        SendToQueue(channel, sub);
                     }
                 }
             }
             Console.ReadLine();
+        }
+
+        public void SendToQueue(IModel channel, Subscription subscription)
+        {
+            var byteMessage = Serialization.SerializeAndGetBytes(subscription);
+            channel.BasicPublish(exchange: brokerSubscriptionsQueueName, routingKey: "", basicProperties: null, body: byteMessage);
+            Console.WriteLine($"Sent subscriptions: {subscription}");
         }
 
         public List<Subscription> GetSubscriptions(string consumerId)
@@ -78,7 +64,8 @@ namespace Consumer
                 {
                     Id = Guid.NewGuid().ToString(),
                     Filter = line.Replace("\0", ""),
-                    SenderId = $"C{consumerId}"
+                    SenderId = $"C{consumerId}",
+                    ForwardNumber = 0
                 };
                 subs.Add(s);
             }

@@ -14,12 +14,11 @@ namespace Broker
     public static class Program
     {
         private static readonly string publicationsQueueName = "publications";
-        private static string exchangeAgentBrokerConsumer = "";
-        private static int brokerNumber = 0;
+        private static int brokerId;
         private static string receiverQueueName = "";
 
-        public static Dictionary<string, List<Subscription>> subscriptions = new Dictionary<string, List<Subscription>>();
-        public static List<Publication> publications = new List<Publication>();
+        public static Dictionary<string, List<Subscription>> RecieverSubscriptionsMap = new Dictionary<string, List<Subscription>>();
+        public static Dictionary<string, Subscription> SubscriptionsMap = new Dictionary<string, Subscription>();
         public static ConnectionFactory factory = new ConnectionFactory() { HostName = Constants.RabbitMqServerAddress };
         public static void Main(string[] args)
         {
@@ -27,21 +26,17 @@ namespace Broker
             {
                 Console.WriteLine("EnterBrokerNumber:");
                 var bnumber = Console.ReadLine();
-                int.TryParse(bnumber, out brokerNumber);
+                int.TryParse(bnumber, out brokerId);
             }
             else
             {
-                int.TryParse(args[0], out brokerNumber);
+                int.TryParse(args[0], out brokerId);
             }
 
-            Console.WriteLine($"Broker {brokerNumber} is up and running.");
+            Console.WriteLine($"Broker B{brokerId} is up and running.");
+            var s = new Subscriptions(brokerId);
 
-            Subscriptions.brokerIdentifier = $"B{brokerNumber}";
-            Subscriptions.brokerExchangeAgentSubscriptions = $"B{brokerNumber}Subscriptions";
-            Subscriptions.hostName = Constants.RabbitMqServerAddress;
-
-
-            var subFeedThreadReference = new ThreadStart(Subscriptions.ReceiveSubscriptions);
+            var subFeedThreadReference = new ThreadStart(s.ReceiveSubscriptions);
             Thread subFeedThread = new Thread(subFeedThreadReference);
             subFeedThread.Start();
 
@@ -74,11 +69,15 @@ namespace Broker
                 var routingKey = eventArguments.RoutingKey;
                 Console.WriteLine($" [x] Received publication'{publication}'");
 
-                var receivers = FilterMessageBasedOnSubscriptions(publication.Contents);
-                foreach (var receiver in receivers)
+                var matchedSubscriptions = FilterMessageBasedOnSubscriptions(publication);
+
+                foreach (var subscriptions in matchedSubscriptions)
                 {
-                    Console.WriteLine($" [*] Matched {receiver}");
-                    SendToConsumerQueue(channelSender, publication, receiver);
+                    Console.WriteLine($" [*] Matched {subscriptions.SenderId}");
+                    if (subscriptions.SenderId.StartsWith('C'))
+                    {
+                        SendToConsumerQueue(channelSender, publication, subscriptions.SenderId);
+                    }
                 }
             };
             channelReceiver.BasicConsume(queue: receiverQueueName,
@@ -95,22 +94,19 @@ namespace Broker
             var properties = channel.CreateBasicProperties();
             properties.Persistent = true;
             channel.BasicPublish(exchange: "", routingKey: receiverId, basicProperties: properties, body: bytes);
-           // channel.BasicPublish(exchange: agent, routingKey: binding, basicProperties: null, body: bytes);
         }
 
-        //Matching algorithm between publications and subscriptions
-        public static HashSet<string> FilterMessageBasedOnSubscriptions(string message)
+        public static List<Subscription> FilterMessageBasedOnSubscriptions(Publication p)
         {
-            string pub = message.Replace("\0", "");
+            string pub = p.Contents.Replace("\0", "");
             string publication = pub.Substring(1, pub.Length - 2);
             string[] fieldsPublication = publication.Split(';');
 
-            HashSet<string> receivers = new HashSet<string>();
+            List<Subscription> matchedSubscriptions = new List<Subscription>();
 
-            foreach (var receiver in subscriptions.Keys)
+            foreach (var receiver in RecieverSubscriptionsMap.Keys)
             {
-
-                foreach (var sub in subscriptions[receiver])
+                foreach (Subscription sub in RecieverSubscriptionsMap[receiver])
                 {
                     string subscription = sub.Filter.Substring(1, sub.Filter.Length - 2);
                     string[] fieldsSub = subscription.Split(';');
@@ -140,7 +136,7 @@ namespace Broker
                                     case "DoB":
                                         string valPub = valuePub.Substring(1, valuePub.Length - 3);
                                         string valSub = valueSub.Substring(1, valueSub.Length - 3);
-                                        if (compareDoB(operatorSub, valPub, valSub))
+                                        if (CompareDoB(operatorSub, valPub, valSub))
                                         {
                                             index = index + 1;
                                         }
@@ -163,16 +159,16 @@ namespace Broker
                     }
                     if (index == sizeSub)
                     {
-                        receivers.Add(receiver);
+                        matchedSubscriptions.Add(sub);
                     }
 
                 }
             }
 
-            return receivers;
+            return matchedSubscriptions;
         }
 
-        public static bool compareDoB(string op, string date1, string date2)
+        public static bool CompareDoB(string op, string date1, string date2)
         {
             String format = "dd/MM/yyyy";
             string date1S = date1.Replace(".", "/");

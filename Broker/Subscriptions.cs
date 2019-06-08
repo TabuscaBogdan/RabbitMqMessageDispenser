@@ -3,23 +3,25 @@ using RabbitMQ.Client.Events;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading.Tasks;
 using Utils;
 using Utils.Models;
 
 namespace Broker
 {
-    public static class Subscriptions
+    public class Subscriptions
     {
-        public static string brokerExchangeAgentSubscriptions;
-        public static string hostName;
-        public static string brokerIdentifier;
-        public static string queueName = "";
-        public static List<Subscription> receivedSubscriptions = new List<Subscription>();
-
-
-        public static void ReceiveSubscriptions()
+        public string brokerExchangeAgentSubscriptions;
+        public int brokerId;
+        ConnectionFactory factory = new ConnectionFactory() { HostName = Constants.RabbitMqServerAddress };
+        public Subscriptions(int brokerId)
         {
-            var factory = new ConnectionFactory() { HostName = Constants.RabbitMqServerAddress };
+            brokerExchangeAgentSubscriptions = $"Subscriptions_B{brokerId}";
+            this.brokerId = brokerId;
+        }
+
+        public void ReceiveSubscriptions()
+        {
             using (var connection = factory.CreateConnection())
             using (var channel = connection.CreateModel())
             {
@@ -33,25 +35,10 @@ namespace Broker
                                   routingKey: "");
 
 
-                Console.WriteLine(" [*] Waiting for messages.");
+                Console.WriteLine(" [*] Waiting for subscriptions...");
 
                 var consumer = new EventingBasicConsumer(channel);
-                consumer.Received += (model, ea) =>
-                {
-                    var message = Serialization.Deserialize<Subscription>(ea.Body);
-                    receivedSubscriptions.Add(message);
-                    var routingKey = ea.RoutingKey;
-                    Console.WriteLine($" [*] Received subscription {message}");
-
-                    if (Program.subscriptions.ContainsKey(message.SenderId))
-                    {
-                        Program.subscriptions[message.SenderId].Add(message);
-                    }
-                    else
-                    {
-                        Program.subscriptions[message.SenderId] = new List<Subscription>() { message };
-                    }
-                };
+                consumer.Received += DealWithSubscriptions;
                 channel.BasicConsume(queue: queueName,
                                      autoAck: true,
                                      consumer: consumer);
@@ -59,6 +46,65 @@ namespace Broker
                 Console.WriteLine("Waiting...");
                 Console.ReadLine();
             }
+        }
+
+        private void DealWithSubscriptions(object model, BasicDeliverEventArgs ea)
+        {
+            var subscription = Serialization.Deserialize<Subscription>(ea.Body);
+            Console.WriteLine($" [*] Received subscription {subscription}");
+
+            if (Program.RecieverSubscriptionsMap.ContainsKey(subscription.SenderId))
+            {
+                Program.RecieverSubscriptionsMap[subscription.SenderId].Add(subscription);
+            }
+            else
+            {
+                Program.RecieverSubscriptionsMap[subscription.SenderId] = new List<Subscription>() { subscription };
+            }
+            if (!Program.SubscriptionsMap.ContainsKey(subscription.Id))
+            {
+                Program.SubscriptionsMap.Add(subscription.Id, subscription);
+            }
+            ForwardSubscription(subscription);
+        }
+
+        public void ForwardSubscription(Subscription subscription)
+        {
+            if (subscription.ForwardNumber == (Constants.NumberOfBrokers - 1))
+            {
+                return;
+            }
+            string forwardId = GetNextBrokerId(subscription);
+            var s = new Subscription
+            {
+                Id = subscription.Id,
+                SenderId = $"B{brokerId}",
+                Filter = subscription.Filter,
+                ForwardNumber = subscription.ForwardNumber + 1
+            };
+
+            var brokerSubscriptionsQueueName = $"Subscriptions_{forwardId}";
+
+            using (var connection = factory.CreateConnection())
+            {
+                using (var channel = connection.CreateModel())
+                {
+                    channel.ExchangeDeclare(exchange: brokerSubscriptionsQueueName, type: "direct");
+
+                    var byteMessage = Serialization.SerializeAndGetBytes(s);
+                    channel.BasicPublish(exchange: brokerSubscriptionsQueueName, routingKey: "", basicProperties: null, body: byteMessage);
+                    Console.WriteLine($" [*] Forwarded subscription: {s}");
+                }
+            }
+        }
+
+        private string GetNextBrokerId(Subscription subscription)
+        {
+            if (brokerId == Constants.NumberOfBrokers)
+            {
+                return "B1";
+            }
+            return $"B{brokerId + 1}";
         }
     }
 }

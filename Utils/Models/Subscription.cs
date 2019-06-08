@@ -9,6 +9,7 @@ namespace Utils.Models
         public string Id { get; set; }
         public string SenderId { get; set; }
         public string Filter { get; set; }
+        public int ForwardNumber { get; set; }
         public override string ToString()
         {
             return $"{SenderId} {Filter}";

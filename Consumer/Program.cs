@@ -38,7 +38,7 @@ namespace Consumer
             var publicationsQueueName = $"C{consumerId}";
 
 
-            Subscriptions sub = new Subscriptions(brokerId, hostName, consumerId);
+            Subscriptions sub = new Subscriptions(brokerId, consumerId);
 
             var subFeedThreadReference = new ThreadStart(sub.SendSubscriptions);
             Thread subFeedThread = new Thread(subFeedThreadReference);

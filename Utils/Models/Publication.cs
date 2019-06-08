@@ -11,6 +11,8 @@ namespace Utils.Models
         public DateTime Timestamp { get; set; }
         public string Contents { get; set; }
 
+        public string SubscriptionMatchId { get; set; }
+
         public override string ToString()
         {
             return $"{PublisherId} {Timestamp.ToLongTimeString()} {Contents}";
