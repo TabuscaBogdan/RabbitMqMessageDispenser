@@ -14,12 +14,17 @@ namespace Broker
     public static class Program
     {
         private static readonly string publicationsQueueName = "publications";
+        private static readonly string forwardPublicationsExchange = "publicationsforwarded";
         private static int brokerId;
         private static string receiverQueueName = "";
 
         public static Dictionary<string, List<Subscription>> RecieverSubscriptionsMap = new Dictionary<string, List<Subscription>>();
         public static Dictionary<string, Subscription> SubscriptionsMap = new Dictionary<string, Subscription>();
         public static ConnectionFactory factory = new ConnectionFactory() { HostName = Constants.RabbitMqServerAddress };
+
+
+        static IModel ChanelPublicationsForward;
+        static IModel ChanelPublicationsConsumer;
         public static void Main(string[] args)
         {
             if (args.Length == 0)
@@ -50,15 +55,58 @@ namespace Broker
                      arguments: null);
                 channelRecievePublications.BasicQos(prefetchSize: 0, prefetchCount: 1, global: false);
 
-                var channelSendPublications = connection.CreateModel();
+                ChanelPublicationsConsumer = connection.CreateModel();
 
-                Broker(channelRecievePublications, channelSendPublications);
-
+                Broker(channelRecievePublications, ChanelPublicationsConsumer);
+                DeclareForwardPublicationsExchange(connection);
                 Console.ReadLine();
+
+                ChanelPublicationsForward.Dispose();
+                ChanelPublicationsConsumer.Dispose();
+
+            }
+
+
+        }
+        private static void DeclareForwardPublicationsExchange(IConnection connection)
+        {
+            ChanelPublicationsForward = connection.CreateModel();
+            ChanelPublicationsForward.ExchangeDeclare(exchange: forwardPublicationsExchange,
+                                        type: "direct");
+            var queueName = ChanelPublicationsForward.QueueDeclare().QueueName;
+            ChanelPublicationsForward.QueueBind(queue: queueName,
+                                  exchange: forwardPublicationsExchange,
+                                  routingKey: $"B{brokerId}");
+            var consumer = new EventingBasicConsumer(ChanelPublicationsForward);
+            consumer.Received += ConsumeForwardedPublications;
+            ChanelPublicationsForward.BasicConsume(queue: queueName,
+                                     autoAck: true,
+                                     consumer: consumer);
+        }
+        private static void ConsumeForwardedPublications(object sender, BasicDeliverEventArgs e)
+        {
+            var publication = Serialization.Deserialize<Publication>(e.Body);
+            Console.WriteLine($" [x] Received forwarded publication on routing key {e.RoutingKey}");
+            Console.WriteLine($" [x] Received forwarded publication {publication}");
+            if (SubscriptionsMap[publication.SubscriptionMatchId].SenderId.StartsWith('B'))
+            {
+                SendForwardsPublication(publication, SubscriptionsMap[publication.SubscriptionMatchId].SenderId);
+            }
+            else
+            {
+                SendToConsumerQueue(ChanelPublicationsConsumer, publication, SubscriptionsMap[publication.SubscriptionMatchId].SenderId);
             }
 
         }
-
+        private static void SendForwardsPublication(Publication publication, string receiverId)
+        {
+            var body = Serialization.SerializeAndGetBytes(publication);
+            ChanelPublicationsForward.BasicPublish(exchange: forwardPublicationsExchange,
+                                 routingKey: receiverId,
+                                 basicProperties: null,
+                                 body: body);
+            Console.WriteLine($" [x] Sent forward publication to {receiverId} : {publication}");
+        }
         private static void Broker(IModel channelReceiver, IModel channelSender)
         {
             var consumer = new EventingBasicConsumer(channelReceiver);
@@ -66,17 +114,20 @@ namespace Broker
             {
                 var body = eventArguments.Body;
                 var publication = Serialization.Deserialize<Publication>(body);
-                var routingKey = eventArguments.RoutingKey;
-                Console.WriteLine($" [x] Received publication'{publication}'");
+                Console.WriteLine($" [x] Received publication {publication} ");
 
                 var matchedSubscriptions = FilterMessageBasedOnSubscriptions(publication);
 
                 foreach (var subscriptions in matchedSubscriptions)
                 {
-                    Console.WriteLine($" [*] Matched {subscriptions.SenderId}");
+                    publication.SubscriptionMatchId = subscriptions.Id;
                     if (subscriptions.SenderId.StartsWith('C'))
                     {
                         SendToConsumerQueue(channelSender, publication, subscriptions.SenderId);
+                    }
+                    if (subscriptions.SenderId.StartsWith('B'))
+                    {
+                        SendForwardsPublication(publication, subscriptions.SenderId);
                     }
                 }
             };
@@ -89,6 +140,8 @@ namespace Broker
 
         private static void SendToConsumerQueue(IModel channel, Publication publication, string receiverId)
         {
+            Console.WriteLine($" [*] Send to consumer {publication}");
+
             var bytes = Serialization.SerializeAndGetBytes(publication);
             channel.QueueDeclare(queue: receiverId, true, false, false, null);
             var properties = channel.CreateBasicProperties();
