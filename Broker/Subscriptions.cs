@@ -41,7 +41,7 @@ namespace Broker
                     var message = Serialization.Deserialize<Subscription>(ea.Body);
                     receivedSubscriptions.Add(message);
                     var routingKey = ea.RoutingKey;
-                    Console.WriteLine($"Received subscription {message}");
+                    Console.WriteLine($" [*] Received subscription {message}");
 
                     if (Program.subscriptions.ContainsKey(message.SenderId))
                     {

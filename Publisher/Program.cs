@@ -63,7 +63,7 @@ namespace Publisher
             string json = JsonConvert.SerializeObject(publication);
             var bytes = Encoding.UTF8.GetBytes(json);
             channel.BasicPublish(exchange: "", routingKey: exchangeAgent, basicProperties: properties, body: bytes);
-            Console.WriteLine($"Sent publication: {publication} |");
+            Console.WriteLine($" [*] Sent publication: {publication} |");
         }
     }
 }

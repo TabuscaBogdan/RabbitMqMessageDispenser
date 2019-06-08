@@ -20,7 +20,7 @@ namespace Broker
 
         public static Dictionary<string, List<Subscription>> subscriptions = new Dictionary<string, List<Subscription>>();
         public static List<Publication> publications = new List<Publication>();
-
+        public static ConnectionFactory factory = new ConnectionFactory() { HostName = Constants.RabbitMqServerAddress };
         public static void Main(string[] args)
         {
             if (args.Length == 0)
@@ -45,16 +45,17 @@ namespace Broker
             Thread subFeedThread = new Thread(subFeedThreadReference);
             subFeedThread.Start();
 
-
-            var factory = new ConnectionFactory() { HostName = Constants.RabbitMqServerAddress };
             using (var connection = factory.CreateConnection())
             {
                 var channelRecievePublications = connection.CreateModel();
+                channelRecievePublications.QueueDeclare(queue: publicationsQueueName,
+                     durable: true,
+                     exclusive: false,
+                     autoDelete: false,
+                     arguments: null);
+                channelRecievePublications.BasicQos(prefetchSize: 0, prefetchCount: 1, global: false);
 
                 var channelSendPublications = connection.CreateModel();
-
-                SetUpReceiveQueue(channelRecievePublications);
-                SetUpSendQueue(channelSendPublications);
 
                 Broker(channelRecievePublications, channelSendPublications);
 
@@ -63,33 +64,8 @@ namespace Broker
 
         }
 
-        public static void SetUpReceiveQueue(IModel channel)
-        {
-
-            channel.QueueDeclare(queue: publicationsQueueName,
-                                 durable: true,
-                                 exclusive: false,
-                                 autoDelete: false,
-                                 arguments: null);
-            channel.BasicQos(prefetchSize: 0, prefetchCount: 1, global: false);
-
-            //channel.ExchangeDeclare(exchange: agent,
-            //    type: "direct");
-
-            //receiverQueueName = channel.QueueDeclare().QueueName;
-            //channel.QueueBind(receiverQueueName, agent, routingKey: "");
-
-        }
-        private static void SetUpSendQueue(IModel channel)
-        {
-            exchangeAgentBrokerConsumer = "B" + brokerNumber;
-            channel.ExchangeDeclare(exchangeAgentBrokerConsumer, type: "direct");
-        }
-
-
         private static void Broker(IModel channelReceiver, IModel channelSender)
         {
-
             var consumer = new EventingBasicConsumer(channelReceiver);
             consumer.Received += (model, eventArguments) =>
             {
@@ -99,10 +75,10 @@ namespace Broker
                 Console.WriteLine($" [x] Received publication'{publication}'");
 
                 var receivers = FilterMessageBasedOnSubscriptions(publication.Contents);
-
                 foreach (var receiver in receivers)
                 {
-                    SendToQueue(channelSender, publication, exchangeAgentBrokerConsumer, receiver);
+                    Console.WriteLine($" [*] Matched {receiver}");
+                    SendToConsumerQueue(channelSender, publication, receiver);
                 }
             };
             channelReceiver.BasicConsume(queue: receiverQueueName,
@@ -112,10 +88,14 @@ namespace Broker
         }
 
 
-        private static void SendToQueue(IModel channel, Publication publication, string agent, string binding)
+        private static void SendToConsumerQueue(IModel channel, Publication publication, string receiverId)
         {
             var bytes = Serialization.SerializeAndGetBytes(publication);
-            channel.BasicPublish(exchange: agent, routingKey: binding, basicProperties: null, body: bytes);
+            channel.QueueDeclare(queue: receiverId, true, false, false, null);
+            var properties = channel.CreateBasicProperties();
+            properties.Persistent = true;
+            channel.BasicPublish(exchange: "", routingKey: receiverId, basicProperties: properties, body: bytes);
+           // channel.BasicPublish(exchange: agent, routingKey: binding, basicProperties: null, body: bytes);
         }
 
         //Matching algorithm between publications and subscriptions

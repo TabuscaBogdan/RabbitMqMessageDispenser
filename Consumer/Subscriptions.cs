@@ -78,7 +78,7 @@ namespace Consumer
                 {
                     Id = Guid.NewGuid().ToString(),
                     Filter = line.Replace("\0", ""),
-                    SenderId = $"C{consumerId}:"
+                    SenderId = $"C{consumerId}"
                 };
                 subs.Add(s);
             }
