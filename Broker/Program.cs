@@ -85,7 +85,7 @@ namespace Broker
         }
         private static void ConsumeForwardedPublications(object sender, BasicDeliverEventArgs e)
         {
-            var publication = Serialization.Deserialize<Publication>(e.Body);
+            var publication = ProtoSerialization.Deserialize<Publication>(e.Body);
             Console.WriteLine($" [x] Received forwarded publication on routing key {e.RoutingKey}");
             Console.WriteLine($" [x] Received forwarded publication {publication}");
             if (SubscriptionsMap[publication.SubscriptionMatchId].SenderId.StartsWith('B'))
@@ -100,7 +100,7 @@ namespace Broker
         }
         private static void SendForwardsPublication(Publication publication, string receiverId)
         {
-            var body = Serialization.SerializeAndGetBytes(publication);
+            var body = ProtoSerialization.SerializeAndGetBytes(publication);
             ChanelPublicationsForward.BasicPublish(exchange: forwardPublicationsExchange,
                                  routingKey: receiverId,
                                  basicProperties: null,
@@ -113,7 +113,7 @@ namespace Broker
             consumer.Received += (model, eventArguments) =>
             {
                 var body = eventArguments.Body;
-                var publication = Serialization.Deserialize<Publication>(body);
+                var publication = ProtoSerialization.Deserialize<Publication>(body);
                 Console.WriteLine($" [x] Received publication {publication} ");
 
                 var matchedSubscriptions = FilterMessageBasedOnSubscriptions(publication);
@@ -142,7 +142,7 @@ namespace Broker
         {
             Console.WriteLine($" [*] Send to consumer {publication}");
 
-            var bytes = Serialization.SerializeAndGetBytes(publication);
+            var bytes = ProtoSerialization.SerializeAndGetBytes(publication);
             channel.QueueDeclare(queue: receiverId, durable: true, exclusive: false, autoDelete: false, arguments: null);
             var properties = channel.CreateBasicProperties();
             properties.Persistent = true;

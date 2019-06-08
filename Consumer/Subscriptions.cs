@@ -42,7 +42,7 @@ namespace Consumer
 
         public void SendToQueue(IModel channel, Subscription subscription)
         {
-            var byteMessage = Serialization.SerializeAndGetBytes(subscription);
+            var byteMessage = ProtoSerialization.SerializeAndGetBytes(subscription);
             channel.BasicPublish(exchange: brokerSubscriptionsQueueName, routingKey: "", basicProperties: null, body: byteMessage);
             Console.WriteLine($"Sent subscriptions: {subscription}");
         }

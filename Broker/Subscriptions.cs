@@ -50,7 +50,7 @@ namespace Broker
 
         private void DealWithSubscriptions(object model, BasicDeliverEventArgs ea)
         {
-            var subscription = Serialization.Deserialize<Subscription>(ea.Body);
+            var subscription = ProtoSerialization.Deserialize<Subscription>(ea.Body);
             Console.WriteLine($" [*] Received subscription {subscription}");
 
             if (Program.RecieverSubscriptionsMap.ContainsKey(subscription.SenderId))
@@ -91,7 +91,7 @@ namespace Broker
                 {
                     channel.ExchangeDeclare(exchange: brokerSubscriptionsQueueName, type: "direct");
 
-                    var byteMessage = Serialization.SerializeAndGetBytes(s);
+                    var byteMessage = ProtoSerialization.SerializeAndGetBytes(s);
                     channel.BasicPublish(exchange: brokerSubscriptionsQueueName, routingKey: "", basicProperties: null, body: byteMessage);
                     Console.WriteLine($" [*] Forwarded subscription: {s}");
                 }

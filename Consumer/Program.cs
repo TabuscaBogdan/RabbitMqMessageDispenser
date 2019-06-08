@@ -34,7 +34,7 @@ namespace Consumer
                 }
                 else
                 {
-                    brokerId += Console.ReadLine();
+                    brokerId += broker;
                 }
                 Console.WriteLine($"Broker ID: {brokerId}");
             }
@@ -78,7 +78,7 @@ namespace Consumer
                     consumer.Received += (model, eventArguments) =>
                     {
                         var body = eventArguments.Body;
-                        var publication = Serialization.Deserialize<Publication>(body);
+                        var publication = ProtoSerialization.Deserialize<Publication>(body);
                         var routingKey = eventArguments.RoutingKey;
                         Console.WriteLine($" [*] Received publication {publication}");
                     };

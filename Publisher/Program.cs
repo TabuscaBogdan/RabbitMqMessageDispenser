@@ -60,8 +60,7 @@ namespace Publisher
         }
         private static void SendToQueue(IModel channel, IBasicProperties properties, Publication publication)
         {
-            string json = JsonConvert.SerializeObject(publication);
-            var bytes = Encoding.UTF8.GetBytes(json);
+            var bytes = ProtoSerialization.SerializeAndGetBytes(publication);
             channel.BasicPublish(exchange: "", routingKey: exchangeAgent, basicProperties: properties, body: bytes);
             Console.WriteLine($" [*] Sent publication: {publication} |");
         }
