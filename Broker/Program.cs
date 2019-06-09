@@ -226,13 +226,15 @@ namespace Broker
             String format = "dd/MM/yyyy";
             string date1S = date1.Replace(".", "/");
             string date2S = date2.Replace(".", "/");
+            var dateTime1 = DateTime.ParseExact(date1S, format, null);
+            var dateTime2 = DateTime.ParseExact(date2S, format, null);
             switch (op)
             {
-                case ">": return DateTime.ParseExact(date1S, format, null) > DateTime.ParseExact(date2S, format, null);
-                case "<": return DateTime.ParseExact(date1S, format, null) < DateTime.ParseExact(date2S, format, null);
-                case "==": return DateTime.ParseExact(date1S, format, null) == DateTime.ParseExact(date2S, format, null);
-                case ">=": return DateTime.ParseExact(date1S, format, null) >= DateTime.ParseExact(date2S, format, null);
-                case "<=": return DateTime.ParseExact(date1S, format, null) <= DateTime.ParseExact(date2S, format, null);
+                case ">": return dateTime1 > dateTime2;
+                case "<": return dateTime1 < dateTime2;
+                case "==": return dateTime1 == dateTime2;
+                case ">=": return dateTime1 >= dateTime2;
+                case "<=": return dateTime1 <= dateTime2;
             }
 
             return false;
