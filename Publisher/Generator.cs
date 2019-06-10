@@ -25,7 +25,7 @@ namespace Publisher
                 {
                     Contents = line.Replace("\0", ""),
                     Id = Guid.NewGuid().ToString(),
-                    Timestamp = DateTime.Now,
+                    Timestamp = DateTime.UtcNow,
                     PublisherId = $"P{identifier}"
                 };
                 publications.Add(publication);
