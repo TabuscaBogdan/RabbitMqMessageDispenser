@@ -16,6 +16,8 @@ namespace Consumer
         private static string brokerId = "B";
         private static string consumerId = "";
         private static string hostName = Constants.RabbitMqServerAddress;
+        private static decimal averageLatencyTime = 0;
+        private static int messageCount = 0;
 
         static void Main(string[] args)
         {
@@ -79,8 +81,12 @@ namespace Consumer
                     {
                         var body = eventArguments.Body;
                         var publication = ProtoSerialization.Deserialize<Publication>(body);
+                        var latency = GetLatency(publication);
+                        UpdateAverageLatency(latency);
                         var routingKey = eventArguments.RoutingKey;
-                        Console.WriteLine($" [*] Received publication {publication}");
+                        Console.WriteLine($" [*] Received publication {publication}\n Latency:{latency}");
+                        Console.WriteLine("Average messages latency:");
+                        ShowAverageLatency();
                     };
                     channel.BasicConsume(queue: publicationsQueueName,
                         autoAck: true,
@@ -89,6 +95,29 @@ namespace Consumer
                     Console.ReadLine();
                 }
             }
+        }
+
+        private static decimal GetLatency(Publication publication)
+        {
+            DateTime timeOfArrival = DateTime.UtcNow;
+            DateTime timeOfCreation = publication.Timestamp;
+
+            TimeSpan difference = timeOfArrival - timeOfCreation;
+
+            decimal latency = (decimal)difference.TotalSeconds;
+
+            return latency;
+        }
+
+        private static void UpdateAverageLatency(decimal latency)
+        {
+            averageLatencyTime += latency;
+            messageCount++;
+        }
+
+        private static void ShowAverageLatency()
+        {
+            Console.WriteLine($"Average latency of messages {averageLatencyTime/messageCount}");
         }
 
         private static string GetRandomBroker()

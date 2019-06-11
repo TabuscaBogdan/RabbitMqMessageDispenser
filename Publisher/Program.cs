@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using Utils;
 using Utils.Models;
 using Newtonsoft.Json;
+using System.Diagnostics;
 
 namespace Publisher
 {
@@ -43,11 +44,16 @@ namespace Publisher
                         var properties = channel.CreateBasicProperties();
                         properties.Persistent = true;
 
-
-                        foreach (var publication in publications)
+                        Stopwatch sw = new Stopwatch();
+                        sw.Start();
+                        while (sw.Elapsed.TotalMinutes < 5)
                         {
-                            SendToQueue(channel, properties, publication);
+                            foreach (var publication in publications)
+                            {
+                                SendToQueue(channel, properties, publication);
+                            }
                         }
+                        sw.Stop();
                     }
                 }
             }
