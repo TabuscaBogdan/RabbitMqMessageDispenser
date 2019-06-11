@@ -19,7 +19,7 @@ namespace Consumer
 
         static void Main(string[] args)
         {
-            var factory = new ConnectionFactory() { HostName = hostName };
+            var factory = RabbitFactory.GetFactory();
             if (args.Length == 0)
             {
                 Console.WriteLine("Enter a consumer ID:");

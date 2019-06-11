@@ -34,7 +34,7 @@ namespace Publisher
             {
                 var generator = new Generator(identifier);
                 publications = generator.Generate();
-                var factory = new ConnectionFactory() { HostName = Constants.RabbitMqServerAddress };
+                var factory = RabbitFactory.GetFactory();
                 using (var connection = factory.CreateConnection())
                 {
                     using (var channel = connection.CreateModel())

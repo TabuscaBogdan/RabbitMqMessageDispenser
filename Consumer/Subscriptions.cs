@@ -22,7 +22,7 @@ namespace Consumer
         
         public void SendSubscriptions()
         {
-            var factory = new ConnectionFactory() { HostName = Constants.RabbitMqServerAddress };
+            var factory = RabbitFactory.GetFactory();
 
             using (var connection = factory.CreateConnection())
             {
@@ -39,6 +39,7 @@ namespace Consumer
             }
             Console.ReadLine();
         }
+
 
         public void SendToQueue(IModel channel, Subscription subscription)
         {

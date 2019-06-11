@@ -13,7 +13,7 @@ namespace Broker
     {
         public string brokerExchangeAgentSubscriptions;
         public int brokerId;
-        ConnectionFactory factory = new ConnectionFactory() { HostName = Constants.RabbitMqServerAddress };
+        ConnectionFactory factory = RabbitFactory.GetFactory();
         public Subscriptions(int brokerId)
         {
             brokerExchangeAgentSubscriptions = $"Subscriptions_B{brokerId}";

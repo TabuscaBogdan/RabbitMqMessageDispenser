@@ -20,7 +20,7 @@ namespace Broker
 
         public static Dictionary<string, List<Subscription>> RecieverSubscriptionsMap = new Dictionary<string, List<Subscription>>();
         public static Dictionary<string, Subscription> SubscriptionsMap = new Dictionary<string, Subscription>();
-        public static ConnectionFactory factory = new ConnectionFactory() { HostName = Constants.RabbitMqServerAddress };
+        public static ConnectionFactory factory = RabbitFactory.GetFactory();
 
 
         static IModel ChanelPublicationsForward;
