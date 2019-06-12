@@ -260,7 +260,7 @@ namespace Broker
             {
                 case ">": return x > y;
                 case "<": return x < y;
-                case "==": return x == y;
+                case "=": return x == y;
                 case ">=": return x >= y;
                 case "<=": return x <= y;
                 default: throw new Exception($"invalid logic: {logic}");
