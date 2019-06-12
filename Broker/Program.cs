@@ -113,8 +113,16 @@ namespace Broker
                 var body = eventArguments.Body;
                 var publication = ProtoSerialization.Deserialize<Publication>(body);
                 Logger.Log($" [x] Received publication {publication} ");
+                var matchedSubscriptions = new List<Subscription>();
+                try
+                {
+                    matchedSubscriptions = FilterMessageBasedOnSubscriptions(publication);
 
-                var matchedSubscriptions = FilterMessageBasedOnSubscriptions(publication);
+                }
+                catch (Exception e)
+                {
+                    Logger.Log(e.Message);
+                }
 
                 foreach (var subscriptions in matchedSubscriptions)
                 {
@@ -160,60 +168,67 @@ namespace Broker
             {
                 foreach (Subscription sub in RecieverSubscriptionsMap[receiver])
                 {
-                    string subscription = sub.Filter.Substring(1, sub.Filter.Length - 2);
-                    string[] fieldsSub = subscription.Split(';');
-                    int sizeSub = fieldsSub.Length;
-                    int index = 0;
-                    foreach (string fieldSub in fieldsSub)
+                    try
                     {
-                        foreach (string fieldPub in fieldsPublication)
+                        string subscription = sub.Filter.Substring(1, sub.Filter.Length - 2);
+                        string[] fieldsSub = subscription.Split(';');
+                        int sizeSub = fieldsSub.Length;
+                        int index = 0;
+                        foreach (string fieldSub in fieldsSub)
                         {
-                            string topicSub = fieldSub.Split(',')[0];
-                            string topicPub = fieldPub.Split(',')[0];
-                            string valueSub = fieldSub.Split(',')[2];
-                            string valuePub = fieldPub.Split(',')[1];
-                            string operatorSub = fieldSub.Split(',')[1];
-                            if (topicSub.Equals(topicPub))
+                            foreach (string fieldPub in fieldsPublication)
                             {
-                                switch (topicSub.Substring(1))
+                                string topicSub = fieldSub.Split(',')[0];
+                                string topicPub = fieldPub.Split(',')[0];
+                                string valueSub = fieldSub.Split(',')[2];
+                                string valuePub = fieldPub.Split(',')[1];
+                                string operatorSub = fieldSub.Split(',')[1];
+                                if (topicSub.Equals(topicPub))
                                 {
-                                    case "patient-name":
-                                    case "eye-color":
-                                        if (valueSub.Equals(valuePub))
-                                        {
-                                            index = index + 1;
-                                        }
+                                    switch (topicSub.Substring(1))
+                                    {
+                                        case "patient-name":
+                                        case "eye-color":
+                                            if (valueSub.Equals(valuePub))
+                                            {
+                                                index = index + 1;
+                                            }
 
-                                        break;
-                                    case "DoB":
-                                        string valPub = valuePub.Substring(1, valuePub.Length - 3);
-                                        string valSub = valueSub.Substring(1, valueSub.Length - 3);
-                                        if (CompareDoB(operatorSub, valPub, valSub))
-                                        {
-                                            index = index + 1;
-                                        }
-                                        break;
-                                    case "height":
-                                    case "heart-rate":
-                                        string a = valuePub.Substring(0, valuePub.Length - 1);
-                                        string b = valueSub.Substring(0, valueSub.Length - 1);
-                                        if (Operator(operatorSub, Convert.ToDouble(a), Convert.ToDouble(b)))
-                                        {
-                                            index = index + 1;
-                                        }
+                                            break;
+                                        case "DoB":
+                                            string valPub = valuePub.Substring(1, valuePub.Length - 3);
+                                            string valSub = valueSub.Substring(1, valueSub.Length - 3);
+                                            if (CompareDoB(operatorSub, valPub, valSub))
+                                            {
+                                                index = index + 1;
+                                            }
+                                            break;
+                                        case "height":
+                                        case "heart-rate":
+                                            string a = valuePub.Substring(0, valuePub.Length - 1);
+                                            string b = valueSub.Substring(0, valueSub.Length - 1);
+                                            if (Operator(operatorSub, Convert.ToDouble(a), Convert.ToDouble(b)))
+                                            {
+                                                index = index + 1;
+                                            }
 
-                                        break;
+                                            break;
+                                    }
+
                                 }
 
                             }
-
+                        }
+                        if (index == sizeSub)
+                        {
+                            matchedSubscriptions.Add(sub);
                         }
                     }
-                    if (index == sizeSub)
+                    catch(Exception e)
                     {
-                        matchedSubscriptions.Add(sub);
+                        Logger.Log($"Failed at {sub}");
+                        throw;
                     }
-
                 }
             }
 
@@ -231,7 +246,7 @@ namespace Broker
             {
                 case ">": return dateTime1 > dateTime2;
                 case "<": return dateTime1 < dateTime2;
-                case "==": return dateTime1 == dateTime2;
+                case "=": return dateTime1 == dateTime2;
                 case ">=": return dateTime1 >= dateTime2;
                 case "<=": return dateTime1 <= dateTime2;
             }
@@ -248,7 +263,7 @@ namespace Broker
                 case "==": return x == y;
                 case ">=": return x >= y;
                 case "<=": return x <= y;
-                default: throw new Exception("invalid logic");
+                default: throw new Exception($"invalid logic: {logic}");
             }
         }
 
