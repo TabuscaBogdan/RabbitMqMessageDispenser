@@ -15,6 +15,8 @@ namespace Consumer
         private static string hostName = Constants.RabbitMqServerAddress;
         private static decimal averageLatencyTime = 0;
         private static int messageCount = 0;
+        private static List<decimal> Latencies = new List<decimal>();
+
 
         static void Main(string[] args)
         {
@@ -79,25 +81,22 @@ namespace Consumer
                         var body = eventArguments.Body;
                         var publication = ProtoSerialization.Deserialize<Publication>(body);
                         var latency = GetLatency(publication);
-                        UpdateAverageLatency(latency);
-                        var routingKey = eventArguments.RoutingKey;
-                        String key = String.Format("C{0}", consumerId);
-                        if (!Constants.dict.ContainsKey(key))
-                        {
-                            Constants.dict.Add(key, new List<Dictionary<String, decimal>>());
-                        }
-                        Constants.dict[key].Add(new Dictionary<String, decimal>()
-                        {
-                            {Convert.ToString(publication), latency}
-                        });
+                        Latencies.Add(latency);
+                        // UpdateAverageLatency(latency);
+                        // var routingKey = eventArguments.RoutingKey;
                         Console.WriteLine($" [*] Received publication {publication}\n Latency:{latency}");
-                        ShowAverageLatency();
+                        // ShowAverageLatency();
                     };
                     channel.BasicConsume(queue: publicationsQueueName,
                         autoAck: true,
                         consumer: consumer);
-                    //Console.WriteLine("Awaiting Messages...");
+                    Console.WriteLine("Awaiting Messages...");
+
                     Console.ReadLine();
+                    Console.WriteLine("Writing to file latency results...");
+                    CSVFileWriter f = new CSVFileWriter(consumerId, latency: Latencies);
+                    f.WriteAllLatenciesInCSV();
+                    Console.WriteLine("Finishd...");
                 }
             }
         }
