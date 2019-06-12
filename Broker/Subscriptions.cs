@@ -13,6 +13,8 @@ namespace Broker
     {
         public string brokerExchangeAgentSubscriptions;
         public int brokerId;
+        public int subscriptionNumber = 0;
+
         ConnectionFactory factory = RabbitFactory.GetFactory();
         public Subscriptions(int brokerId)
         {
@@ -35,15 +37,13 @@ namespace Broker
                                   routingKey: "");
 
 
-                //Console.WriteLine(" [*] Waiting for subscriptions...");
+                Logger.Log(" [*] Waiting for subscriptions...", true);
 
                 var consumer = new EventingBasicConsumer(channel);
                 consumer.Received += DealWithSubscriptions;
                 channel.BasicConsume(queue: queueName,
                                      autoAck: true,
                                      consumer: consumer);
-
-                //Console.WriteLine("Waiting...");
                 Console.ReadLine();
             }
         }
@@ -51,7 +51,8 @@ namespace Broker
         private void DealWithSubscriptions(object model, BasicDeliverEventArgs ea)
         {
             var subscription = ProtoSerialization.Deserialize<Subscription>(ea.Body);
-            Console.WriteLine($" [*] Received subscription {subscription}");
+            Logger.Log($" [*] Received subscription {subscription}");
+            Logger.Log($"S {++subscriptionNumber}", true);
 
             if (Program.RecieverSubscriptionsMap.ContainsKey(subscription.SenderId))
             {
@@ -93,7 +94,7 @@ namespace Broker
 
                     var byteMessage = ProtoSerialization.SerializeAndGetBytes(s);
                     channel.BasicPublish(exchange: brokerSubscriptionsQueueName, routingKey: "", basicProperties: null, body: byteMessage);
-                    Console.WriteLine($" [*] Forwarded subscription: {s}");
+                    Logger.Log($" [*] Forwarded subscription: {s}");
                 }
             }
         }

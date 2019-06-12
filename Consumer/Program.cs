@@ -23,10 +23,10 @@ namespace Consumer
             var factory = RabbitFactory.GetFactory();
             if (args.Length == 0)
             {
-                //Console.WriteLine("Enter a consumer ID:");
+                Logger.Log("Enter a consumer ID:", true);
                 consumerId = Console.ReadLine();
 
-                //Console.WriteLine("Enter a broker ID (if random leave empty):");
+                Logger.Log("Enter a broker ID (if random leave empty):", true);
                 var broker = Console.ReadLine();
 
                 if (string.IsNullOrWhiteSpace(broker))
@@ -37,12 +37,12 @@ namespace Consumer
                 {
                     brokerId += broker;
                 }
-                Console.WriteLine($"Broker ID: {brokerId}");
+                Logger.Log($"Broker ID: {brokerId}", true);
             }
             else
             {
                 consumerId = args[0];
-                Console.WriteLine($"Consumer ID: {consumerId}");
+                Logger.Log($"Consumer ID: {consumerId}", true);
 
                 if (args.Length == 1)
                 {
@@ -52,7 +52,7 @@ namespace Consumer
                 {
                     brokerId += args[1];
                 }
-                //Console.WriteLine($"Broker ID: {brokerId}");
+                Logger.Log($"Broker ID: {brokerId}", true);
             }
             var publicationsQueueName = $"C{consumerId}";
 
@@ -76,29 +76,35 @@ namespace Consumer
                     channel.BasicQos(prefetchSize: 0, prefetchCount: 1, global: false);
 
                     var consumer = new EventingBasicConsumer(channel);
-                    consumer.Received += (model, eventArguments) =>
-                    {
-                        var body = eventArguments.Body;
-                        var publication = ProtoSerialization.Deserialize<Publication>(body);
-                        var latency = GetLatency(publication);
-                        Latencies.Add(latency);
-                        // UpdateAverageLatency(latency);
-                        // var routingKey = eventArguments.RoutingKey;
-                        Console.WriteLine($" [*] Received publication {publication}\n Latency:{latency}");
-                        // ShowAverageLatency();
-                    };
+                    consumer.Received += ConsumePublications;
                     channel.BasicConsume(queue: publicationsQueueName,
                         autoAck: true,
                         consumer: consumer);
-                    Console.WriteLine("Awaiting Messages...");
+                    Logger.Log("Awaiting Messages...", true);
 
                     Console.ReadLine();
-                    Console.WriteLine("Writing to file latency results...");
+                    consumer.Received -= ConsumePublications;
+                    Logger.Log("Writing to file latency results...");
+
                     CSVFileWriter f = new CSVFileWriter(consumerId, latency: Latencies);
                     f.WriteAllLatenciesInCSV();
-                    Console.WriteLine("Finishd...");
+                    Logger.Log("Finishd...");
                 }
             }
+        }
+
+        private static void ConsumePublications(object model, BasicDeliverEventArgs eventArguments)
+        {
+            var body = eventArguments.Body;
+            var publication = ProtoSerialization.Deserialize<Publication>(body);
+            var latency = GetLatency(publication);
+            Latencies.Add(latency);
+            Logger.Log($" [*] Received publication {Latencies.Count}", true);
+
+            // UpdateAverageLatency(latency);
+            // var routingKey = eventArguments.RoutingKey;
+            Logger.Log($" [*] Received publication {publication}\n Latency:{latency}");
+            // ShowAverageLatency();
         }
 
         private static decimal GetLatency(Publication publication)
@@ -121,7 +127,7 @@ namespace Consumer
 
         private static void ShowAverageLatency()
         {
-            Console.WriteLine($"Average latency of messages: {averageLatencyTime/messageCount}");
+            Logger.Log($"Average latency of messages: {averageLatencyTime/messageCount}");
         }
 
         private static string GetRandomBroker()

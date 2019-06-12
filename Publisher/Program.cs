@@ -6,6 +6,7 @@ using Utils;
 using Utils.Models;
 using Newtonsoft.Json;
 using System.Diagnostics;
+using System.Threading.Tasks;
 
 namespace Publisher
 {
@@ -21,13 +22,13 @@ namespace Publisher
 
             if (args.Length == 0)
             {
-                //Console.WriteLine("Enter publisher id:");
+                Logger.Log("Enter publisher id:", true);
                 publisherId = Console.ReadLine();
             }
             else
             {
                 publisherId = args[0];
-                Console.WriteLine($"Publisher id: {publisherId}");
+                Logger.Log($"Publisher id: {publisherId}", true);
             }
 
 
@@ -44,23 +45,28 @@ namespace Publisher
                         var properties = channel.CreateBasicProperties();
                         properties.Persistent = true;
 
-                        //Stopwatch sw = new Stopwatch();
-                        //sw.Start();
-                        //while (sw.Elapsed.TotalMinutes < 5)
-                        //{
+                        Stopwatch sw = new Stopwatch();
+                        sw.Start();
+                        var i = 0;
+                        //while (i < 100)
+                        {
                             foreach (var publication in publications)
                             {
                                 SendToQueue(channel, properties, publication);
                             }
-                        //}
-                        //sw.Stop();
-                        Console.WriteLine($"Publisher P{publisherId} sent all publications.");
+                            i++;
+                            // Logger.Log($"Publisher P{publisherId} sent {i} times.", true);
+
+                            // Task.Delay(new TimeSpan(0, 5, 0));
+                        }
+                        sw.Stop();
+                        Logger.Log($"Publisher P{publisherId} sent all publications.", true);
                     }
                 }
             }
             catch (Exception e)
             {
-                Console.WriteLine(e.ToString());
+                Logger.Log(e.ToString());
                 Console.ReadLine();
             }
             Console.ReadLine();
@@ -69,7 +75,7 @@ namespace Publisher
         {
             var bytes = ProtoSerialization.SerializeAndGetBytes(publication);
             channel.BasicPublish(exchange: "", routingKey: exchangeAgent, basicProperties: properties, body: bytes);
-            //Console.WriteLine($" [*] Sent publication: {publication} |");
+            Logger.Log($" [*] Sent publication: {publication} |");
         }
     }
 }

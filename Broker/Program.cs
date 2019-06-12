@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
@@ -18,10 +19,10 @@ namespace Broker
         private static int brokerId;
         private static string receiverQueueName = "";
 
+
         public static Dictionary<string, List<Subscription>> RecieverSubscriptionsMap = new Dictionary<string, List<Subscription>>();
         public static Dictionary<string, Subscription> SubscriptionsMap = new Dictionary<string, Subscription>();
         public static ConnectionFactory factory = RabbitFactory.GetFactory();
-
 
         static IModel ChanelPublicationsForward;
         static IModel ChanelPublicationsConsumer;
@@ -29,7 +30,7 @@ namespace Broker
         {
             if (args.Length == 0)
             {
-                Console.WriteLine("EnterBrokerNumber:");
+                Logger.Log("EnterBrokerNumber:", true);
                 var bnumber = Console.ReadLine();
                 int.TryParse(bnumber, out brokerId);
             }
@@ -38,7 +39,7 @@ namespace Broker
                 int.TryParse(args[0], out brokerId);
             }
 
-            Console.WriteLine($"Broker B{brokerId} is up and running.");
+            Logger.Log($"Broker B{brokerId} is up and running.", true);
             var s = new Subscriptions(brokerId);
 
             var subFeedThreadReference = new ThreadStart(s.ReceiveSubscriptions);
@@ -84,7 +85,7 @@ namespace Broker
         private static void ConsumeForwardedPublications(object sender, BasicDeliverEventArgs e)
         {
             var publication = ProtoSerialization.Deserialize<Publication>(e.Body);
-            Console.WriteLine($" [x] Received forwarded publication on routing key {e.RoutingKey}");
+            Logger.Log($" [x] Received forwarded publication on routing key {e.RoutingKey}", true);
             if (SubscriptionsMap[publication.SubscriptionMatchId].SenderId.StartsWith('B'))
             {
                 SendForwardsPublication(publication, SubscriptionsMap[publication.SubscriptionMatchId].SenderId);
@@ -102,7 +103,7 @@ namespace Broker
                                  routingKey: receiverId,
                                  basicProperties: null,
                                  body: body);
-            Console.WriteLine($" [x] Sent forward publication to {receiverId} : {publication}");
+            Logger.Log($" [x] Sent forward publication to {receiverId} : {publication}");
         }
         private static void Broker(IModel channelReceiver, IModel channelSender)
         {
@@ -111,7 +112,7 @@ namespace Broker
             {
                 var body = eventArguments.Body;
                 var publication = ProtoSerialization.Deserialize<Publication>(body);
-                Console.WriteLine($" [x] Received publication {publication} ");
+                Logger.Log($" [x] Received publication {publication} ");
 
                 var matchedSubscriptions = FilterMessageBasedOnSubscriptions(publication);
 
@@ -137,7 +138,8 @@ namespace Broker
 
         private static void SendToConsumerQueue(IModel channel, Publication publication, string receiverId)
         {
-            Console.WriteLine($" [*] Send to consumer {publication}");
+            Logger.Log($" [*] Send to consumer", true);
+            Logger.Log($" [*] Send to consumer {publication}");
 
             var bytes = ProtoSerialization.SerializeAndGetBytes(publication);
             channel.QueueDeclare(queue: receiverId, durable: true, exclusive: false, autoDelete: false, arguments: null);
