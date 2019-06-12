@@ -35,9 +35,10 @@ namespace Consumer
                     {
                         SendToQueue(channel, sub);
                     }
+                    Console.WriteLine($"Consumer C{consumerIdentifier} sent all subscriptions.");
                 }
             }
-            Console.ReadLine();
+            //Console.ReadLine();
         }
 
 
@@ -45,7 +46,7 @@ namespace Consumer
         {
             var byteMessage = ProtoSerialization.SerializeAndGetBytes(subscription);
             channel.BasicPublish(exchange: brokerSubscriptionsQueueName, routingKey: "", basicProperties: null, body: byteMessage);
-            Console.WriteLine($"Sent subscriptions: {subscription}");
+            //Console.WriteLine($"Sent subscriptions: {subscription}");
         }
 
         public List<Subscription> GetSubscriptions(string consumerId)

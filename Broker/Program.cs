@@ -29,7 +29,7 @@ namespace Broker
         {
             if (args.Length == 0)
             {
-                Console.WriteLine("EnterBrokerNumber:");
+                //Console.WriteLine("EnterBrokerNumber:");
                 var bnumber = Console.ReadLine();
                 int.TryParse(bnumber, out brokerId);
             }
@@ -60,6 +60,12 @@ namespace Broker
                 Broker(channelRecievePublications, ChanelPublicationsConsumer);
                 DeclareForwardPublicationsExchange(connection);
                 Console.ReadLine();
+                Console.WriteLine($"Broker B{brokerId} says that has finished to process everything. Now it's creating the resulted file.");
+                Console.WriteLine($"Dictionary size: {Constants.dict.Count}");
+                CSVFileWriter csvFileWriter = new CSVFileWriter(brokerId, Constants.dict);
+                csvFileWriter.WriteAllLatenciesInCSV();
+
+                System.Threading.Thread.Sleep(5000);
 
                 ChanelPublicationsForward.Dispose();
                 ChanelPublicationsConsumer.Dispose();
@@ -87,7 +93,7 @@ namespace Broker
         {
             var publication = ProtoSerialization.Deserialize<Publication>(e.Body);
             Console.WriteLine($" [x] Received forwarded publication on routing key {e.RoutingKey}");
-            Console.WriteLine($" [x] Received forwarded publication {publication}");
+            //Console.WriteLine($" [x] Received forwarded publication {publication}");
             if (SubscriptionsMap[publication.SubscriptionMatchId].SenderId.StartsWith('B'))
             {
                 SendForwardsPublication(publication, SubscriptionsMap[publication.SubscriptionMatchId].SenderId);

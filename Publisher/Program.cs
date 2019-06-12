@@ -17,23 +17,23 @@ namespace Publisher
         static void Main(string[] args)
         {
 
-            var identifier = "";
+            var publisherId = "";
 
             if (args.Length == 0)
             {
-                Console.WriteLine("Enter publisher id:");
-                identifier = Console.ReadLine();
+                //Console.WriteLine("Enter publisher id:");
+                publisherId = Console.ReadLine();
             }
             else
             {
-                identifier = args[0];
-                Console.WriteLine($"Publisher id: {identifier}");
+                publisherId = args[0];
+                Console.WriteLine($"Publisher id: {publisherId}");
             }
 
 
             try
             {
-                var generator = new Generator(identifier);
+                var generator = new Generator(publisherId);
                 publications = generator.Generate();
                 var factory = RabbitFactory.GetFactory();
                 using (var connection = factory.CreateConnection())
@@ -44,16 +44,17 @@ namespace Publisher
                         var properties = channel.CreateBasicProperties();
                         properties.Persistent = true;
 
-                        Stopwatch sw = new Stopwatch();
-                        sw.Start();
-                        while (sw.Elapsed.TotalMinutes < 5)
-                        {
+                        //Stopwatch sw = new Stopwatch();
+                        //sw.Start();
+                        //while (sw.Elapsed.TotalMinutes < 5)
+                        //{
                             foreach (var publication in publications)
                             {
                                 SendToQueue(channel, properties, publication);
                             }
-                        }
-                        sw.Stop();
+                        //}
+                        //sw.Stop();
+                        Console.WriteLine($"Publisher P{publisherId} sent all publications.");
                     }
                 }
             }
@@ -68,7 +69,7 @@ namespace Publisher
         {
             var bytes = ProtoSerialization.SerializeAndGetBytes(publication);
             channel.BasicPublish(exchange: "", routingKey: exchangeAgent, basicProperties: properties, body: bytes);
-            Console.WriteLine($" [*] Sent publication: {publication} |");
+            //Console.WriteLine($" [*] Sent publication: {publication} |");
         }
     }
 }

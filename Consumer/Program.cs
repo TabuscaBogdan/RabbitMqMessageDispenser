@@ -1,11 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
-using System.Text;
+using System.Threading;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
-using RabbitMQ.Client.Exceptions;
-using System.Threading;
 using Utils;
 using Utils.Models;
 
@@ -24,10 +21,10 @@ namespace Consumer
             var factory = RabbitFactory.GetFactory();
             if (args.Length == 0)
             {
-                Console.WriteLine("Enter a consumer ID:");
+                //Console.WriteLine("Enter a consumer ID:");
                 consumerId = Console.ReadLine();
 
-                Console.WriteLine("Enter a broker ID (if random leave empty):");
+                //Console.WriteLine("Enter a broker ID (if random leave empty):");
                 var broker = Console.ReadLine();
 
                 if (string.IsNullOrWhiteSpace(broker))
@@ -53,7 +50,7 @@ namespace Consumer
                 {
                     brokerId += args[1];
                 }
-                Console.WriteLine($"Broker ID: {brokerId}");
+                //Console.WriteLine($"Broker ID: {brokerId}");
             }
             var publicationsQueueName = $"C{consumerId}";
 
@@ -84,14 +81,22 @@ namespace Consumer
                         var latency = GetLatency(publication);
                         UpdateAverageLatency(latency);
                         var routingKey = eventArguments.RoutingKey;
+                        String key = String.Format("C{0}", consumerId);
+                        if (!Constants.dict.ContainsKey(key))
+                        {
+                            Constants.dict.Add(key, new List<Dictionary<String, decimal>>());
+                        }
+                        Constants.dict[key].Add(new Dictionary<String, decimal>()
+                        {
+                            {Convert.ToString(publication), latency}
+                        });
                         Console.WriteLine($" [*] Received publication {publication}\n Latency:{latency}");
-                        Console.WriteLine("Average messages latency:");
                         ShowAverageLatency();
                     };
                     channel.BasicConsume(queue: publicationsQueueName,
                         autoAck: true,
                         consumer: consumer);
-                    Console.WriteLine("Awaiting Messages...");
+                    //Console.WriteLine("Awaiting Messages...");
                     Console.ReadLine();
                 }
             }
@@ -117,7 +122,7 @@ namespace Consumer
 
         private static void ShowAverageLatency()
         {
-            Console.WriteLine($"Average latency of messages {averageLatencyTime/messageCount}");
+            Console.WriteLine($"Average latency of messages: {averageLatencyTime/messageCount}");
         }
 
         private static string GetRandomBroker()

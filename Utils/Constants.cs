@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace Utils
 {
@@ -10,5 +11,9 @@ namespace Utils
         public static readonly String SubscriptionsPath = "Resources/test_small_files/subscriptions_c{0}.txt";
         public static readonly int NumberOfBrokers = 3;
         public static readonly bool RunLocal = false;
+
+        public static readonly String LatencyOutputFileName = "Resources/LatencyOutput/Latencies{0}.csv";
+
+        public static Dictionary<String,List<Dictionary<String, decimal>>> dict = new Dictionary<String, List<Dictionary<String, decimal>>>();
     }
 }

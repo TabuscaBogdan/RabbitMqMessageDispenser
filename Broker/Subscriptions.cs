@@ -35,7 +35,7 @@ namespace Broker
                                   routingKey: "");
 
 
-                Console.WriteLine(" [*] Waiting for subscriptions...");
+                //Console.WriteLine(" [*] Waiting for subscriptions...");
 
                 var consumer = new EventingBasicConsumer(channel);
                 consumer.Received += DealWithSubscriptions;
@@ -43,7 +43,7 @@ namespace Broker
                                      autoAck: true,
                                      consumer: consumer);
 
-                Console.WriteLine("Waiting...");
+                //Console.WriteLine("Waiting...");
                 Console.ReadLine();
             }
         }
